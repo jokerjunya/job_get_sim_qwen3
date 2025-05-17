@@ -1,3 +1,30 @@
 【履歴書・職務経歴書】
- 
-{seeker_profile} 
+
+氏名: {seeker_profile[name]}
+年齢: {seeker_profile[age]}歳
+
+【現職】
+{seeker_profile[current_job][company]} / {seeker_profile[current_job][role]}（{seeker_profile[current_job][period]}）
+{seeker_profile[current_job][description]}
+
+【職歴】
+{% for wh in seeker_profile[work_history] %}
+- {{wh[company]}} / {{wh[role]}}（{{wh[period]}}）: {{wh[description]}}
+{% endfor %}
+
+【スキル】
+{seeker_profile[skills]}
+
+【価値観】
+{seeker_profile[values]}
+
+【タグ】
+{seeker_profile[tags]}
+
+【自己紹介・人生ストーリー】
+{seeker_profile[context]}
+
+【希望条件】
+年収: {seeker_profile[hope_conditions][min_salary]}万円以上
+働き方: {seeker_profile[hope_conditions][work_style]}
+カルチャー: {seeker_profile[hope_conditions][culture_keywords]} 

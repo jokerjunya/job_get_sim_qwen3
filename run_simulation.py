@@ -6,8 +6,16 @@ from agents.job_simulation.seeker_agent import SeekerAgent
 from agents.job_simulation.employer_agent import EmployerAgent
 from agents.job_simulation.simulated_seeker import SimulatedSeeker
 from agents.job_simulation.simulated_interviewer import SimulatedInterviewer
+from agents.job_simulation.simulated_hr import SimulatedHR
 
 async def main():
+    # --- 新規：求人作成フェーズ ---
+    simulated_hr = SimulatedHR()
+    employer_agent = EmployerAgent()
+    job_posting = employer_agent.create_job_posting(simulated_hr)
+    print("\n【SimulatedHRとEmployerAgentによる新規求人作成】")
+    print(job_posting)
+
     # データ読み込み
     with open('data/seekers.json', encoding='utf-8') as f:
         seekers = json.load(f)
@@ -15,11 +23,11 @@ async def main():
         jobs = json.load(f)
 
     seeker_profile = seekers[0]
-    job_list = jobs
+    # job_listを新規求人のみとする
+    job_list = [job_posting]
 
     # エージェント初期化
     seeker_agent = SeekerAgent()
-    employer_agent = EmployerAgent()
     simulated_seeker = SimulatedSeeker()
     interviewer = SimulatedInterviewer()
 
