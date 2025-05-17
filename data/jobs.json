@@ -1,0 +1,47 @@
+[
+  {
+    "id": "job1",
+    "title": "バックエンドエンジニア",
+    "company": "Tech Solutions",
+    "salary": 550,
+    "work_style": "リモート可",
+    "tech_stack": ["Python", "Django", "AWS"],
+    "culture_keywords": ["成長環境", "自律性"]
+  },
+  {
+    "id": "job2",
+    "title": "フロントエンドエンジニア",
+    "company": "Web Innovators",
+    "salary": 480,
+    "work_style": "出社",
+    "tech_stack": ["React", "TypeScript", "CSS"],
+    "culture_keywords": ["チームワーク", "安定"]
+  },
+  {
+    "id": "job3",
+    "title": "データサイエンティスト",
+    "company": "AI Analytics Lab",
+    "salary": 620,
+    "work_style": "ハイブリッド",
+    "tech_stack": ["Python", "TensorFlow", "SQL"],
+    "culture_keywords": ["研究志向", "自由度"]
+  },
+  {
+    "id": "job4",
+    "title": "プロジェクトマネージャー",
+    "company": "Global IT Partners",
+    "salary": 700,
+    "work_style": "リモート可",
+    "tech_stack": ["PMBOK", "JIRA", "Slack"],
+    "culture_keywords": ["リーダーシップ", "多様性"]
+  },
+  {
+    "id": "job5",
+    "title": "QAエンジニア",
+    "company": "Quality First",
+    "salary": 500,
+    "work_style": "出社",
+    "tech_stack": ["Selenium", "Python", "Jenkins"],
+    "culture_keywords": ["品質重視", "安定"]
+  }
+] 

@@ -1,0 +1,15 @@
+[
+  {
+    "id": "seeker1",
+    "name": "山田太郎",
+    "age": 29,
+    "current_job": "Webエンジニア",
+    "skills": ["Python", "Django", "React"],
+    "career_goal": "技術力を活かして社会課題を解決したい",
+    "hope_conditions": {
+      "min_salary": 500,
+      "work_style": "リモート可",
+      "culture_keywords": ["成長環境", "自律性"]
+    }
+  }
+] 

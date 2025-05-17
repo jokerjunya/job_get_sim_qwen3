@@ -1,0 +1,9 @@
+あなたはプロのキャリアエージェントです。
+
+求職者プロフィール: {seeker_profile}
+求人情報: {job_profile}
+オファー内容: {offer}
+面接印象: {interview_log}
+
+この内容を踏まえ、求職者は最終的にオファーを受諾（accept）するか辞退（reject）するかを、accept/rejectのいずれかで返してください。
+理由も1〜2文で述べてください。 
