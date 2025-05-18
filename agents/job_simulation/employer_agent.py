@@ -33,9 +33,21 @@ class EmployerAgent(BaseAgent):
     def create_job_posting(self, hr_agent) -> dict:
         """
         SimulatedHRから要望を受け取り、求人票（dict）を生成して返す。
+        仕事内容・ミッション・チーム・成長機会・独自の魅力・求める人物像なども自動生成して付与する。
         """
         needs = hr_agent.provide_needs()
-        # 必要に応じてEmployerAgent独自の最適化や追加項目もここで付与可能
+        # --- リッチな項目の自動生成 ---
+        # 仕事内容・ミッション
+        mission = f"{needs.get('position', 'ポジション')}として、{needs.get('background', '新規事業')}に挑戦し、社会に新しい価値を生み出す役割です。"
+        # チーム・社風
+        team = f"{', '.join(needs.get('culture_keywords', []))}を大切にする多様なメンバーが活躍中。協力し合いながら成長できる環境です。"
+        # 成長機会
+        growth = f"{needs.get('skills', ['多様なスキル'])}を活かしつつ、最先端のAI技術やクラウド開発に携わりながらスキルアップできます。"
+        # 独自の魅力
+        unique = f"フルリモート可、柔軟な働き方、挑戦を後押しするカルチャーなど、他社にはない魅力が多数。"
+        # 求める人物像
+        persona = f"{', '.join(needs.get('skills', []))}の経験があり、{', '.join(needs.get('culture_keywords', []))}を大切にできる方を歓迎します。"
+
         job_posting = {
             "id": f"job_{self.name}",
             "title": needs.get("position"),
@@ -46,7 +58,12 @@ class EmployerAgent(BaseAgent):
             "work_style": needs.get("work_style"),
             "salary": needs.get("min_salary"),
             "culture_keywords": needs.get("culture_keywords", []),
-            # 追加項目例
-            "created_by": self.name
+            "created_by": self.name,
+            # 追加リッチ項目
+            "mission": mission,
+            "team": team,
+            "growth": growth,
+            "unique": unique,
+            "persona": persona
         }
         return job_posting 

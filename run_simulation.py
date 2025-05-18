@@ -9,28 +9,6 @@ from agents.job_simulation.simulated_interviewer import SimulatedInterviewer
 from agents.job_simulation.simulated_hr import SimulatedHR
 
 async def main():
-    # --- 新規：求人作成フェーズ ---
-    simulated_hr = SimulatedHR()
-    employer_agent = EmployerAgent()
-    job_posting = employer_agent.create_job_posting(simulated_hr)
-    print("\n【SimulatedHRとEmployerAgentによる新規求人作成】")
-    print(job_posting)
-
-    # データ読み込み
-    with open('data/seekers.json', encoding='utf-8') as f:
-        seekers = json.load(f)
-    with open('data/jobs.json', encoding='utf-8') as f:
-        jobs = json.load(f)
-
-    seeker_profile = seekers[0]
-    # job_listを新規求人のみとする
-    job_list = [job_posting]
-
-    # エージェント初期化
-    seeker_agent = SeekerAgent()
-    simulated_seeker = SimulatedSeeker()
-    interviewer = SimulatedInterviewer()
-
     now_str = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     os.makedirs('logs', exist_ok=True)
     log_path = f'logs/simulation_log_{now_str}.jsonl'
@@ -51,55 +29,119 @@ async def main():
                     if para.strip():
                         f.write(f'{para.strip()}\n\n')
             f.write('\n')
-
-    # ステップごとにstep_counterを使って番号付与
     def step_title(title):
         nonlocal step_counter
         s = f"{step_counter}. {title}"
         step_counter += 1
         return s
 
-    # --- 求人検索・情報収集ステップ ---
-    # 1. 自己紹介
-    step = step_title("自己紹介")
-    self_intro = await simulated_seeker.self_introduction()
-    print("\n【求職者の自己紹介】")
-    print(self_intro)
-    log_json(step, self_intro)
-    log_md(step, self_intro)
+    # --- 新規：求人作成フェーズ ---
+    simulated_hr = SimulatedHR()
+    employer_agent = EmployerAgent()
+    hr_needs = simulated_hr.provide_needs()
+    log_json("0.1. SimulatedHRの求人要望", hr_needs)
+    log_md("0.1. SimulatedHRの求人要望", hr_needs)
+    job_posting = employer_agent.create_job_posting(simulated_hr)
+    log_json("0.2. EmployerAgentが生成した求人票", job_posting)
+    log_md("0.2. EmployerAgentが生成した求人票", job_posting)
+    print("\n【SimulatedHRとEmployerAgentによる新規求人作成】")
+    print(job_posting)
 
-    # 2. 求人提案
-    step = step_title("求人提案")
-    job_proposal = await seeker_agent.propose_job(self_intro, job_list)
-    print("\n【キャリアアドバイザーの求人提案】")
-    print(job_proposal)
-    log_json(step, job_proposal)
-    log_md(step, job_proposal)
+    # データ読み込み
+    with open('data/seekers.json', encoding='utf-8') as f:
+        seekers = json.load(f)
+    with open('data/jobs.json', encoding='utf-8') as f:
+        jobs = json.load(f)
 
-    # 3. 求職者の質問
-    step = step_title("求人に関する質問")
-    job_question = await simulated_seeker.job_question(job_proposal)
-    print("\n【求職者の質問】")
-    print(job_question)
-    log_json(step, job_question)
-    log_md(step, job_question)
+    seeker_profile = seekers[0]
+    # job_listを新規求人のみとする
+    job_list = [job_posting]
 
-    # 4. 求人詳細説明
-    step = step_title("求人詳細説明")
-    job_detail = await seeker_agent.explain_job_detail(job_proposal, job_question)
-    print("\n【キャリアアドバイザーの詳細説明】")
-    print(job_detail)
-    log_json(step, job_detail)
-    log_md(step, job_detail)
+    # エージェント初期化
+    seeker_agent = SeekerAgent()
+    simulated_seeker = SimulatedSeeker()
+    interviewer = SimulatedInterviewer()
 
-    # 5. 最終応募判断
-    step = step_title("最終応募判断")
-    final_decision = await simulated_seeker.job_final_decision(job_proposal)
-    print("\n【求職者の最終応募判断】")
-    print(final_decision)
-    log_json(step, final_decision)
-    log_md(step, final_decision)
-    if "応募しません" in final_decision:
+    # --- seekerとseekerAIの会話例をまとめて生成・表示 ---
+    conversation_example = await simulated_seeker.start_conversation(seeker_profile)
+    print("\n【転職相談の会話例（5往復）】")
+    print(conversation_example)
+    log_json("1. 転職相談の会話例", conversation_example)
+    log_md("1. 転職相談の会話例", conversation_example)
+
+    # 会話例の最後のseeker発言が合意（「ぜひ聞かせて」など）なら求人提案フローへ
+    lines = [l.strip() for l in conversation_example.strip().split('\n') if l.strip()]
+    seeker_lines = [l for l in lines if l.startswith("seeker:")]
+    last_seeker_line = seeker_lines[-1] if seeker_lines else ""
+
+    # 合意ワードのバリエーションを拡張
+    agree_keywords = [
+        "ぜひ聞かせて", "興味ある", "聞いてみたい", "転職も考えてみようかな", "その話、詳しく",
+        "参加", "説明会", "面接", "応募", "挑戦", "やってみたい", "受けてみたい", "話が楽しみ", "前向き", "お願いします", "ぜひ", "やる気", "やってみる", "やりたい", "聞いてみる", "聞きたい", "進めたい"
+    ]
+    if any(kw in last_seeker_line for kw in agree_keywords):
+        # 2. 求人提案（新フロー）
+        step = step_title("求人概要提示")
+        job = job_list[0]  # 1件のみ前提
+        job_summary = await seeker_agent.propose_job_summary(job)
+        print("\n【キャリアアドバイザーの求人概要】")
+        print(job_summary)
+        log_json(step, job_summary)
+        log_md(step, job_summary)
+
+        step = step_title("求人推しプレゼン")
+        job_pitch = await seeker_agent.propose_job_pitch(seeker_profile, job)
+        print("\n【キャリアアドバイザーの推しポイント】")
+        print(job_pitch)
+        log_json(step, job_pitch)
+        log_md(step, job_pitch)
+
+        # 応募意思確認まで実行
+        step = step_title("応募意思確認")
+        job_intent = await simulated_seeker.job_intent(job_pitch)
+        print("\n【求職者の応募意思】")
+        print(job_intent)
+        log_json(step, job_intent)
+        log_md(step, job_intent)
+        return
+    else:
+        print("今回は求人提案フェーズに進まず終了します。")
+        return
+
+    # 以降のフローは必要に応じて分岐・省略
+    return
+
+    # 2. 求人提案（新フロー）
+    step = step_title("求人概要提示")
+    job = job_list[0]  # 1件のみ前提
+    job_summary = await seeker_agent.propose_job_summary(job)
+    print("\n【キャリアアドバイザーの求人概要】")
+    print(job_summary)
+    log_json(step, job_summary)
+    log_md(step, job_summary)
+
+    step = step_title("求人推しプレゼン")
+    job_pitch = await seeker_agent.propose_job_pitch(seeker_profile, job)
+    print("\n【キャリアアドバイザーの推しポイント】")
+    print(job_pitch)
+    log_json(step, job_pitch)
+    log_md(step, job_pitch)
+
+    step = step_title("応募意思確認")
+    job_intent = await simulated_seeker.job_intent(job_pitch)
+    print("\n【求職者の応募意思】")
+    print(job_intent)
+    log_json(step, job_intent)
+    log_md(step, job_intent)
+
+    step = step_title("応募理由生成")
+    application_reason = await simulated_seeker.application_reason(job_intent)
+    print("\n【応募判断理由】")
+    print(application_reason)
+    log_json(step, application_reason)
+    log_md(step, application_reason)
+
+    if any(kw in job_intent for kw in ["見送", "応募しない", "辞退", "やめる", "考えたい"]):
         print("応募辞退のためシミュレーションを終了します。")
         return
 

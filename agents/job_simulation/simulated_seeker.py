@@ -42,4 +42,32 @@ class SimulatedSeeker(BaseAgent):
             prompt_template = f.read().strip()
         prompt = prompt_template.format(job_proposal=job_proposal)
         decision = await self.llm.generate_content_async(prompt)
-        return decision.strip() 
+        return decision.strip()
+
+    async def start_conversation(self, seeker_profile: dict) -> str:
+        with open("prompts/seeker_life_topic.txt", encoding="utf-8") as f:
+            prompt_template = f.read().strip()
+        prompt = prompt_template.format(seeker_profile=seeker_profile)
+        conversation = await self.llm.generate_content_async(prompt)
+        return conversation.strip()
+
+    async def reply_in_conversation(self, history: str) -> str:
+        with open("prompts/seeker_reply.txt", encoding="utf-8") as f:
+            prompt_template = f.read().strip()
+        prompt = prompt_template.format(history=history)
+        reply = await self.llm.generate_content_async(prompt)
+        return reply.strip()
+
+    async def job_intent(self, job_pitch: str) -> str:
+        with open("prompts/seeker_job_intent.txt", encoding="utf-8") as f:
+            prompt_template = f.read().strip()
+        prompt = prompt_template.format(job_pitch=job_pitch)
+        intent = await self.llm.generate_content_async(prompt)
+        return intent.strip()
+
+    async def application_reason(self, job_intent: str) -> str:
+        with open("prompts/seeker_application_reason.txt", encoding="utf-8") as f:
+            prompt_template = f.read().strip()
+        prompt = prompt_template.format(job_intent=job_intent)
+        reason = await self.llm.generate_content_async(prompt)
+        return reason.strip() 
