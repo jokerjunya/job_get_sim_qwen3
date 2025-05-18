@@ -15,92 +15,60 @@
 
 ---
 
-## ディレクトリ構成
+## ディレクトリ構成（2024/05時点 最新）
 
-- `agents/job_simulation/` : エージェント実装（SeekerAgent, EmployerAgent, SimulatedSeeker, SimulatedInterviewer）
-- `prompts/`   : プロンプト管理用テキスト（例: `seeker_self_introduction.txt`, `interviewer_question_stage1.txt` など）
-- `data/`      : シミュレーション用データ（`seekers.json`, `jobs.json`）
-- `logs/`      : ログファイル（md/jsonl形式で自動生成）
-- `scripts/`   : 補助スクリプト（例: `run_conversation.py`）
-- `run_simulation.py` : メイン実行スクリプト
+- `agents/`
+  - `job_simulation/` : 転職プロセスの主要エージェント実装
+    - `seeker_agent.py` : 求職者AI（意思決定・履歴書生成・志望理由など）
+    - `employer_agent.py` : 企業AI（求人生成・書類選考・オファー調整など）
+    - `simulated_seeker.py` : シミュレート求職者（会話・感情・応募意思など）
+    - `simulated_hr.py` : シミュレート人事（企業要望・求人要件提示）
+    - `simulated_interviewer.py` : シミュレート面接官（質問生成・評価）
+  - `conversation_roles/` : 会話エージェントA/B（ロールプレイ・対話実験用）
+  - `base_agent.py` : エージェント共通基盤
+  - `qwen3_llm.py` : Qwen3 LLMラッパー
+  - `qwen3_setup.py` : LLMセットアップ補助
+- `prompts/`   : 全プロンプト管理（用途・呼び出しタイミングは下記表参照）
+- `data/`      : シミュレーション用データ
+  - `seekers.json` : 求職者プロフィール例
+  - `jobs.json` : 求人データ（多様な職種・条件）
+- `logs/`      : シミュレーションごとの出力ログ（md/jsonl形式で自動生成）
+- `scripts/`   : 補助スクリプト
+  - `run_conversation.py` : 会話ラリーや個別テスト用
+- `run_simulation.py` : メイン実行スクリプト（転職プロセス全体を自動進行）
+- `test_qwen3_adk.py`, `test_qwen3_agent.py` : テスト・動作検証用スクリプト
 - `requirements.txt` : 依存パッケージ
+- `.gitignore` : Git管理除外設定
 
 ---
 
-## セットアップ手順
+## 全体フロー（概要）
 
-### 1. Python環境
-- Python 3.8以降を推奨
-- 仮想環境推奨（例: `python -m venv .venv` → `source .venv/bin/activate`）
-
-### 2. 依存パッケージのインストール
-```sh
-pip install -r requirements.txt
-```
-
-### 3. Ollama + Qwen3のセットアップ
-- [Ollama公式](https://ollama.com/)からOllamaをインストール
-- Qwen3モデル（例: `qwen3:30b`）をダウンロード
-```sh
-ollama run qwen3:30b
-```
-- サーバーが`http://localhost:11434`で起動していればOK
+1. **SimulatedHR/EmployerAgentによる求人作成**
+2. **SimulatedSeeker/SeekerAgentによる転職相談・求人提案・推しポイント生成**
+3. **応募意思確認・志望理由生成**
+4. **書類選考・履歴書生成・合否判定**
+5. **面接（一次・二次・最終）質問・回答・評価**
+6. **オファー交渉（最大3ラウンド）・受諾判断**
+7. **全ステップの出力・会話・合否・交渉内容をログ化**
 
 ---
 
-## 実行方法
+## 主要ファイル・役割（抜粋）
 
-```sh
-python run_simulation.py
-```
-- ログは`logs/simulation_log_YYYYMMDD_HHMMSS.md`/`.jsonl`として自動保存されます
-- シミュレーションは自己紹介→求人提案→質問→詳細説明→応募判断→書類選考→面接（3段階）→条件交渉→受諾判断まで自動で進行します
-
----
-
-## 主要ファイル例
-
-### prompts/
-- `seeker_self_introduction.txt` : 求職者の自己紹介プロンプト
-- `interviewer_question_stage1.txt` : 一次面接用質問プロンプト
-- `offer_negotiation_seeker.txt` : 求職者の交渉リクエスト生成用
-- ...他にも各プロセスごとに細分化
-
-### data/
-- `seekers.json` : 求職者プロフィール例
-- `jobs.json` : 求人データ（5件以上の多様な職種・条件）
-
-### agents/job_simulation/
-- `seeker_agent.py` : 求職者エージェント
-- `employer_agent.py` : 企業エージェント
-- `simulated_seeker.py` : シミュレート求職者
-- `simulated_interviewer.py` : シミュレート面接官
+- `agents/job_simulation/seeker_agent.py` : 求職者AIの意思決定・履歴書・志望理由・求人評価など
+- `agents/job_simulation/employer_agent.py` : 企業AIの求人生成・書類選考・オファー調整
+- `agents/job_simulation/simulated_seeker.py` : シミュレート求職者の会話・感情・応募意思
+- `agents/job_simulation/simulated_hr.py` : 企業人事の要望・求人要件提示
+- `agents/job_simulation/simulated_interviewer.py` : 面接官の質問・評価
+- `prompts/` : 全プロンプト（用途・呼び出しタイミングは下記表）
+- `data/seekers.json` : 求職者プロフィール例
+- `data/jobs.json` : 求人データ
+- `logs/` : シミュレーションごとの詳細ログ
+- `run_simulation.py` : 全体フローの自動進行・ログ出力
+- `scripts/run_conversation.py` : 会話ラリーや個別テスト用
 
 ---
-
-## 依存パッケージ
-- google-adk
-- litellm
-- requests
-
----
-
-## 注意事項
-- `.venv/`や`logs/`などは`.gitignore`で除外してください
-- `data/`内に個人情報や公開できないデータが含まれていないかご注意ください
-- モデルサイズ・PCスペックにご注意ください（Qwen3:30Bは高スペック推奨）
-
----
-
-## 今後の課題・拡張
-- プロンプトや判定ロジックのさらなる現実化・高品質化
-- 求人データのさらなる多様化
-- ユーザー（人間）介入ポイントや入社後フォローなどの拡張
-
----
-
-## ライセンス
-- 本リポジトリはMITライセンスです 
 
 ## プロンプトファイル一覧・用途・呼び出しタイミング
 
@@ -133,4 +101,59 @@ python run_simulation.py
 | **role_a_system.txt** | 会話エージェントAのシステムプロンプト。 | 会話エージェントAの初期化時 | ConversationRoleAAgent |
 | **role_b_system.txt** | 会話エージェントBのシステムプロンプト。 | 会話エージェントBの初期化時 | ConversationRoleBAgent |
 
-> ※用途や呼び出しタイミングは、今後のフロー追加・変更時に随時更新してください。 
+> ※用途や呼び出しタイミングは、今後のフロー追加・変更時に随時更新してください。
+
+## セットアップ手順
+
+### 1. Python環境
+- Python 3.8以降を推奨
+- 仮想環境推奨（例: `python -m venv .venv` → `source .venv/bin/activate`）
+
+### 2. 依存パッケージのインストール
+```sh
+pip install -r requirements.txt
+```
+
+### 3. Ollama + Qwen3のセットアップ
+- [Ollama公式](https://ollama.com/)からOllamaをインストール
+- Qwen3モデル（例: `qwen3:30b`）をダウンロード
+```sh
+ollama run qwen3:30b
+```
+- サーバーが`http://localhost:11434`で起動していればOK
+
+---
+
+## 実行方法
+
+```sh
+python run_simulation.py
+```
+- ログは`logs/simulation_log_YYYYMMDD_HHMMSS.md`/`.jsonl`として自動保存されます
+- シミュレーションは自己紹介→求人提案→質問→詳細説明→応募判断→書類選考→面接（3段階）→条件交渉→受諾判断まで自動で進行します
+
+---
+
+## 依存パッケージ
+- google-adk
+- litellm
+- requests
+
+---
+
+## 注意事項
+- `.venv/`や`logs/`などは`.gitignore`で除外してください
+- `data/`内に個人情報や公開できないデータが含まれていないかご注意ください
+- モデルサイズ・PCスペックにご注意ください（Qwen3:30Bは高スペック推奨）
+
+---
+
+## 今後の課題・拡張
+- プロンプトや判定ロジックのさらなる現実化・高品質化
+- 求人データのさらなる多様化
+- ユーザー（人間）介入ポイントや入社後フォローなどの拡張
+
+---
+
+## ライセンス
+- 本リポジトリはMITライセンスです 
