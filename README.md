@@ -101,24 +101,119 @@
 
 > ※用途や呼び出しタイミングは、今後のフロー追加・変更時に随時更新してください。
 
-## セットアップ手順
+## セットアップ手順（詳細）
 
-### 1. Python環境
-- Python 3.8以降を推奨
-- 仮想環境推奨（例: `python -m venv .venv` → `source .venv/bin/activate`）
+### 1. Python仮想環境の作成・有効化
+
+#### Mac/Linux
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+#### Windows
+```sh
+python -m venv .venv
+.venv\Scripts\activate
+```
+> 仮想環境を使うことで、他のプロジェクトと依存関係が混ざらず安全です。
+
+---
 
 ### 2. 依存パッケージのインストール
+
 ```sh
 pip install -r requirements.txt
 ```
+- 主な依存パッケージ
+  - `google-adk`：Google ADKエージェント基盤
+  - `litellm`：Ollama等のLLM APIラッパー
+  - `requests`：API通信
+- インストール時にエラーが出る場合は、`pip`のバージョンを最新化してください。
 
-### 3. Ollama + Qwen3のセットアップ
-- [Ollama公式](https://ollama.com/)からOllamaをインストール
-- Qwen3モデル（例: `qwen3:30b`）をダウンロード
+---
+
+### 3. Ollamaのインストール
+
+#### Mac
+1. [Ollama公式サイト](https://ollama.com/)から「Download for macOS」をクリックし、ダウンロードした`.dmg`を開いて`Ollama`アプリを`Applications`にドラッグ。
+2. 初回起動時に権限付与が必要な場合は指示に従う。
+
+#### Linux
+```sh
+curl -fsSL https://ollama.com/install.sh | sh
+```
+- インストール後、`ollama --version`でバージョンが表示されればOK。
+
+#### Windows（プレビュー）
+1. [Ollama公式サイト](https://ollama.com/)から「Download for Windows (Preview)」をクリックし、インストーラー（.exe）を実行。
+2. WSL2（Windows Subsystem for Linux）が必要。インストーラーの指示に従いセットアップ。
+
+---
+
+### 4. Qwen3モデルのダウンロード・起動
+
+- Qwen3はOllama公式ライブラリに登録されています。
+- 例：30Bモデルを使う場合
+
 ```sh
 ollama run qwen3:30b
 ```
-- サーバーが`http://localhost:11434`で起動していればOK
+- 初回は自動でモデル（約18GB）がダウンロードされます。  
+  ※PCのRAMは最低32GB以上推奨（8Bモデルなら16GB程度でも可）
+
+- 他のサイズ例：
+  - `ollama run qwen3:8b`（約5GB、16GB RAM推奨）
+  - `ollama run qwen3:4b`（約2.5GB、8GB RAM推奨）
+
+- モデル一覧表示
+```sh
+ollama list
+```
+- 不要なモデル削除
+```sh
+ollama rm qwen3:8b
+```
+
+---
+
+### 5. サーバー起動確認
+
+- Ollamaは`ollama run ...`でモデルを起動すると自動でAPIサーバー（`http://localhost:11434`）が立ち上がります。
+- 別ターミナルで
+```sh
+curl http://localhost:11434
+```
+- でレスポンスが返ればOK。
+
+---
+
+### 6. シミュレーションの実行
+
+```sh
+python run_simulation.py
+```
+- ログは`logs/simulation_log_YYYYMMDD_HHMMSS.md`/`.jsonl`として自動保存されます。
+- シミュレーションは自己紹介→求人提案→質問→詳細説明→応募判断→書類選考→面接（3段階）→条件交渉→受諾判断まで自動で進行します。
+
+---
+
+### 7. よくあるトラブル・FAQ
+
+- **RAM不足でモデルが起動しない**  
+  → より小さいモデル（例：`qwen3:4b`や`qwen3:8b`）を使うか、他のアプリを終了してメモリを空けてください。
+- **Ollamaコマンドが見つからない**  
+  → ターミナルやPCを再起動。パスが通っていない場合は公式ドキュメント参照。
+- **APIエラーや接続不可**  
+  → `ollama run ...`でモデルを起動し直し、`http://localhost:11434`が開くか確認。
+
+---
+
+### 8. 補足
+
+- GPUがあれば自動で利用されます（Apple Silicon, NVIDIA等）。
+- `.env`やAPIキーは不要です。
+- モデルサイズが大きいほど高性能ですが、PCスペックに注意してください。
 
 ---
 
