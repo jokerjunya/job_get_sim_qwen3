@@ -15,7 +15,10 @@ async def main():
     log_path = f'logs/simulation_log_{now_str}.jsonl'
     log_md_path = f'logs/simulation_log_{now_str}.md'
     step_counter = 1
+    # logのリスト（後で面接評価を取得するために使用）
+    logs = []
     def log_json(step, content):
+        logs.append({"step": step, "content": content})
         with open(log_path, 'a', encoding='utf-8') as f:
             f.write(json.dumps({"step": step, "content": content}, ensure_ascii=False) + '\n')
     def log_md(step, content):
@@ -90,7 +93,7 @@ async def main():
 
     # エージェント初期化（seeker_agentを先に）
     seeker_agent = SeekerAgent()
-    simulated_hr = SimulatedHR()
+    simulated_hr = SimulatedHR(llm=seeker_agent.llm)
     employer_agent = EmployerAgent()
 
     hr_needs = simulated_hr.provide_needs()
@@ -169,7 +172,7 @@ async def main():
 
         # --- 応募理由（履歴書＋AI推薦コメント一体型）生成 ---
         step = step_title("応募理由・AI推薦付き履歴書")
-        application_reason = await simulated_seeker.application_reason(seeker_profile, job)
+        application_reason = await simulated_seeker.application_reason(seeker_profile, job_list[0])
         print("\n【応募理由・AI推薦付き履歴書】")
         print(application_reason)
         log_json(step, application_reason)
@@ -178,154 +181,145 @@ async def main():
         if any(kw in job_intent for kw in ["見送", "応募しない", "辞退", "やめる", "考えたい"]):
             print("応募辞退のためシミュレーションを終了します。")
             return
-        # 以降のフローは必要に応じて追加
-        return
+                
+        # --- 書類選考プロセス（新フロー） ---
+        step = step_title("履歴書提出")
+        resume = seeker_agent.generate_resume(seeker_profile)
+        print("\n【履歴書・職務経歴書】")
+        print(resume)
+        log_json(step, resume)
+        log_md(step, resume)
 
-    # 以降のフローは必要に応じて分岐・省略
-    return
+        step = step_title("empaiによる書類審査")
+        empai_judgement = await employer_agent.screen_resume_llm(resume)
+        print("\n【empaiの書類審査】")
+        print(empai_judgement["raw"])
+        log_json(step, empai_judgement)
+        log_md(step, empai_judgement["raw"])
 
-    # 2. 求人提案（新フロー）
-    step = step_title("求人概要提示")
-    job = job_list[0]  # 1件のみ前提
-    job_summary = await seeker_agent.propose_job_summary(job)
-    print("\n【キャリアアドバイザーの求人概要】")
-    print(job_summary)
-    log_json(step, job_summary)
-    log_md(step, job_summary)
+        step = step_title("simhrの意見")
+        simhr_opinion = await simulated_hr.opine_on_resume_screening(empai_judgement)
+        print("\n【simhrの意見】")
+        print(simhr_opinion["raw"])
+        log_json(step, simhr_opinion)
+        log_md(step, simhr_opinion["raw"])
 
-    step = step_title("求人推しプレゼン")
-    job_pitch = await seeker_agent.propose_job_pitch(seeker_profile, job)
-    print("\n【キャリアアドバイザーの推しポイント】")
-    print(job_pitch)
-    log_json(step, job_pitch)
-    log_md(step, job_pitch)
-
-    step = step_title("応募意思確認")
-    job_intent = await simulated_seeker.job_intent(job_pitch)
-    print("\n【求職者の応募意思】")
-    print(job_intent)
-    log_json(step, job_intent)
-    log_md(step, job_intent)
-
-    step = step_title("応募理由生成")
-    application_reason = await simulated_seeker.application_reason(job_intent)
-    print("\n【応募判断理由】")
-    print(application_reason)
-    log_json(step, application_reason)
-    log_md(step, application_reason)
-
-    if any(kw in job_intent for kw in ["見送", "応募しない", "辞退", "やめる", "考えたい"]):
-        print("応募辞退のためシミュレーションを終了します。")
-        return
-
-    # --- 書類選考プロセス ---
-    step = step_title("履歴書提出")
-    resume = seeker_agent.generate_resume(seeker_profile)
-    print("\n【履歴書・職務経歴書】")
-    print(resume)
-    log_json(step, resume)
-    log_md(step, resume)
-
-    step = step_title("書類選考結果")
-    result, feedback = employer_agent.screen_resume(resume)
-    print("\n【書類選考結果】")
-    print(feedback)
-    log_json(step, feedback)
-    log_md(step, feedback)
-    if not result:
-        print("書類選考不合格のため終了します。")
-        return
-
-    # 求職者が求人を評価
-    step = step_title("応募判断")
-    job_eval = await seeker_agent.evaluate_jobs(seeker_profile, job_list)
-    print("\n【求職者の応募判断】")
-    print(job_eval)
-    log_json(step, job_eval)
-    log_md(step, job_eval)
-
-    # 志望動機生成
-    motivation = await simulated_seeker.generate_motivation(job_list[0])
-    print("\n【志望動機】")
-    print(motivation)
-    log_json(step_title("志望動機"), motivation)
-    log_md(step_title("志望動機"), motivation)
-
-    # 企業が応募者を評価
-    employer_eval = await employer_agent.evaluate_applicant(seeker_profile, job_eval)
-    print("\n【企業の応募者評価】")
-    print(employer_eval)
-    log_json(step_title("企業評価"), employer_eval)
-    log_md(step_title("企業評価"), employer_eval)
-
-    # --- 面接プロセス多段階化 ---
-    interview_stages = ["一次面接", "二次面接", "最終面接"]
-    for stage in interview_stages:
-        print(f"\n【{stage}】")
-        question = await interviewer.generate_question(job_list[0], stage=stage)
-        print("【面接質問】")
-        print(question)
-        log_json(step_title(f"{stage} 質問"), question)
-        log_md(step_title(f"{stage} 質問"), question)
-
-        answer = await simulated_seeker.answer_interview(question)
-        print("【面接回答】")
-        print(answer)
-        log_json(step_title(f"{stage} 回答"), answer)
-        log_md(step_title(f"{stage} 回答"), answer)
-
-        evaluation = await interviewer.evaluate_answer(answer)
-        print("【面接官の評価】")
-        print(evaluation)
-        # 合否判定ロジック（例：評価コメントに"高い"や"合格"があれば合格、それ以外は不合格）
-        if any(ng in evaluation for ng in ["不合格", "見送り", "reject"]):
-            judge = "不合格"
+        # --- 最終合否決定 ---
+        step = step_title("書類選考・最終判定")
+        # シンプルなロジック例：empaiが合格でsimhrが賛成→合格、それ以外は不合格
+        if empai_judgement["decision"] == "合格" and simhr_opinion["opinion"] == "賛成":
+            final_result = "合格"
+            final_reason = f"empai・simhrともに合格判断。理由: {empai_judgement['reason']} / {simhr_opinion['comment']}"
         else:
-            judge = "合格"
-        print(f"【{stage}判定】{judge}")
-        log_json(step_title(f"{stage} 判定"), judge)
-        log_md(step_title(f"{stage} 判定"), judge)
-        log_json(step_title(f"{stage} 評価"), evaluation)
-        log_md(step_title(f"{stage} 評価"), evaluation)
-        if judge == "不合格":
-            print(f"{stage}で不合格のため終了します。")
+            final_result = "不合格"
+            final_reason = f"empaiまたはsimhrが不合格・反対判断。理由: {empai_judgement['reason']} / {simhr_opinion['comment']}"
+        print(f"\n【書類選考・最終判定】{final_result}\n{final_reason}")
+        log_json(step, {"result": final_result, "reason": final_reason})
+        log_md(step, f"合否: {final_result}\n理由: {final_reason}")
+        # 不合格の場合は終了
+        if final_result == "不合格":
+            print("書類選考で不合格のため、シミュレーションを終了します。")
             return
+        
+        # 合格の場合は面接プロセスに進む
+        print("書類選考に合格しました。面接プロセスに進みます。")
 
-    # --- オファー交渉ステップ ---
-    # 初回オファー（例：年収・入社日）
-    offer = {"年収": 500, "入社日": "2024-07-01"}
-    print("\n【初回オファー提示】")
-    print(offer)
-    log_json(step_title("初回オファー提示"), offer)
-    log_md(step_title("初回オファー提示"), offer)
+        # --- 面接プロセス多段階化 ---
+        interview_stages = ["一次面接", "二次面接", "最終面接"]
+        for stage in interview_stages:
+            print(f"\n【{stage}】")
+            question = await interviewer.generate_question(job_list[0], stage=stage, seeker_profile=seeker_profile, resume=resume)
+            print("【面接質問】")
+            print(question)
+            log_json(step_title(f"{stage} 質問"), question)
+            log_md(step_title(f"{stage} 質問"), question)
 
-    max_rounds = 3
-    for round_num in range(1, max_rounds + 1):
-        print(f"\n【オファー交渉ラウンド{round_num}】")
-        request = await seeker_agent.request_offer_change(offer)
-        print("求職者リクエスト:", request)
-        log_json(step_title(f"交渉ラウンド{round_num} 求職者リクエスト"), request)
-        log_md(step_title(f"交渉ラウンド{round_num} 求職者リクエスト"), request)
-        if request == "特にありません":
-            print("合意に達しました。")
-            log_json(step_title(f"交渉ラウンド{round_num} 合意"), offer)
-            log_md(step_title(f"交渉ラウンド{round_num} 合意"), offer)
-            break
-        offer = await employer_agent.update_offer(offer, request)
-        print("企業再提示:", offer)
-        log_json(step_title(f"交渉ラウンド{round_num} 企業再提示"), offer)
-        log_md(step_title(f"交渉ラウンド{round_num} 企業再提示"), offer)
-        if round_num == max_rounds:
-            print("最大ラウンドに達したため、現状オファーで最終判断します。")
-            log_json(step_title(f"交渉ラウンド{round_num} 打ち切り"), offer)
-            log_md(step_title(f"交渉ラウンド{round_num} 打ち切り"), offer)
+            answer = await simulated_seeker.answer_interview(question, seeker_profile=seeker_profile)
+            print("【面接回答】")
+            print(answer)
+            log_json(step_title(f"{stage} 回答"), answer)
+            log_md(step_title(f"{stage} 回答"), answer)
 
-    # --- 受諾判断 ---
-    offer_decision = await simulated_seeker.decide_offer(offer)
-    print("\n【オファー受諾判断】")
-    print("受諾" if offer_decision else "辞退")
-    log_json(step_title("オファー受諾判断"), "受諾" if offer_decision else "辞退")
-    log_md(step_title("オファー受諾判断"), "受諾" if offer_decision else "辞退")
+            evaluation = await interviewer.evaluate_answer(answer)
+            print("【面接官の評価】")
+            print(evaluation)
+            # 合否判定ロジック（例：評価コメントに"高い"や"合格"があれば合格、それ以外は不合格）
+            if any(ng in evaluation for ng in ["不合格", "見送り", "reject"]):
+                judge = "不合格"
+            else:
+                judge = "合格"
+            print(f"【{stage}判定】{judge}")
+            log_json(step_title(f"{stage} 判定"), judge)
+            log_md(step_title(f"{stage} 判定"), judge)
+            log_json(step_title(f"{stage} 評価"), evaluation)
+            log_md(step_title(f"{stage} 評価"), evaluation)
+            if judge == "不合格":
+                print(f"{stage}で不合格のため終了します。")
+                return
+
+        # --- オファー交渉ステップ ---
+        # 面接評価リストを作成
+        interview_evaluations = []
+        for stage in interview_stages:
+            for item in logs:
+                if item.get("step", "").endswith(f"{stage} 評価"):
+                    interview_evaluations.append(item["content"])
+        
+        # 面接評価と求職者プロフィールに基づく動的オファー生成
+        offer = await employer_agent.generate_initial_offer(
+            seeker_profile=seeker_profile,
+            job=job_list[0],
+            interview_evaluations=interview_evaluations
+        )
+        print("\n【初回オファー提示】")
+        print(offer)
+        log_json(step_title("初回オファー提示"), offer)
+        log_md(step_title("初回オファー提示"), offer)
+
+        max_rounds = 3
+        for round_num in range(1, max_rounds + 1):
+            print(f"\n【オファー交渉ラウンド{round_num}】")
+            request = await seeker_agent.request_offer_change(offer)
+            print("求職者リクエスト:", request)
+            log_json(step_title(f"交渉ラウンド{round_num} 求職者リクエスト"), request)
+            log_md(step_title(f"交渉ラウンド{round_num} 求職者リクエスト"), request)
+            if request == "特にありません":
+                print("合意に達しました。")
+                log_json(step_title(f"交渉ラウンド{round_num} 合意"), offer)
+                log_md(step_title(f"交渉ラウンド{round_num} 合意"), offer)
+                break
+            offer = await employer_agent.update_offer(offer, request)
+            print("企業再提示:", offer)
+            log_json(step_title(f"交渉ラウンド{round_num} 企業再提示"), offer)
+            log_md(step_title(f"交渉ラウンド{round_num} 企業再提示"), offer)
+            if round_num == max_rounds:
+                print("最大ラウンドに達したため、現状オファーで最終判断します。")
+                log_json(step_title(f"交渉ラウンド{round_num} 打ち切り"), offer)
+                log_md(step_title(f"交渉ラウンド{round_num} 打ち切り"), offer)
+
+        # --- 受諾判断（対話形式） ---
+        step = step_title("オファー受諾判断プロセス")
+        offer_decision_result = await simulated_seeker.decide_offer(
+            offer=offer,
+            seeker_profile=seeker_profile,
+            job=job_list[0],
+            interview_evaluations=interview_evaluations
+        )
+        
+        # 会話と決断を表示
+        print("\n【オファー受諾判断の会話】")
+        print(offer_decision_result["conversation"])
+        log_json(step, offer_decision_result)
+        log_md(step, offer_decision_result["conversation"])
+        
+        # 最終決断のみ分けて表示
+        final_decision = "受諾" if offer_decision_result["decision"] else "辞退"
+        print(f"\n【最終決断】{final_decision}")
+        log_json(step_title("最終決断"), final_decision)
+        log_md(step_title("最終決断"), final_decision)
+    else:
+        print("求人の話を聞きたい意思が示されなかったため、シミュレーションを終了します。")
+        return
 
 if __name__ == "__main__":
     asyncio.run(main()) 

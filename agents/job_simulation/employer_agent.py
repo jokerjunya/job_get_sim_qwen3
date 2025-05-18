@@ -30,6 +30,87 @@ class EmployerAgent(BaseAgent):
         new_offer = await self.llm.generate_content_async(prompt)
         return new_offer.strip()
 
+    async def generate_initial_offer(self, seeker_profile: dict, job: dict, interview_evaluations: list = None) -> dict:
+        """
+        面接評価や求職者のスキル/経験を反映した初回オファーを生成する。
+        
+        Args:
+            seeker_profile: 求職者プロフィール
+            job: 求人情報
+            interview_evaluations: 面接評価のリスト
+            
+        Returns:
+            dict: 初回オファー（年収、入社日など）
+        """
+        # 基本オファー
+        base_offer = {
+            "年収": job.get("salary", 500),  # 求人の最低年収を基準
+            "入社日": "2024-07-01",         # デフォルト入社日
+            "役職": "一般社員",              # デフォルト役職
+            "勤務形態": job.get("work_style", "フルタイム") # 求人の勤務形態
+        }
+        
+        # 評価スコア計算
+        evaluation_score = 0
+        if interview_evaluations:
+            # 面接評価からポジティブなキーワードをカウント
+            positive_keywords = ["優れた", "高い", "素晴らしい", "適切", "強み", "合格", "推薦"]
+            for evaluation in interview_evaluations:
+                for keyword in positive_keywords:
+                    if keyword in evaluation:
+                        evaluation_score += 1
+        
+        # スキルマッチ度
+        skill_match = 0
+        if seeker_profile and "skills" in seeker_profile and "tech_stack" in job:
+            skill_match = sum(1 for skill in seeker_profile["skills"] if skill in job["tech_stack"])
+        
+        # 経験値評価
+        experience_score = 0
+        if seeker_profile and "current_job" in seeker_profile:
+            # 経験年数を考慮
+            experience_years = seeker_profile.get("experience_years", 0)
+            if experience_years > 10:
+                experience_score = 3
+            elif experience_years > 5:
+                experience_score = 2
+            elif experience_years > 2:
+                experience_score = 1
+            
+            # 役職経験も考慮
+            if "role" in seeker_profile["current_job"]:
+                if "リーダー" in seeker_profile["current_job"]["role"] or "マネージャー" in seeker_profile["current_job"]["role"]:
+                    experience_score += 1
+        
+        # 総合評価に基づいて年収調整
+        total_score = evaluation_score + skill_match + experience_score
+        
+        # 年収調整（基本年収 + 評価によるボーナス）
+        base_salary = base_offer["年収"]
+        if total_score >= 8:  # 非常に高評価
+            base_offer["年収"] = int(base_salary * 1.3)  # 30%増
+            base_offer["役職"] = "シニアポジション"
+        elif total_score >= 5:  # 高評価
+            base_offer["年収"] = int(base_salary * 1.15)  # 15%増
+        elif total_score >= 3:  # 良好
+            base_offer["年収"] = int(base_salary * 1.05)  # 5%増
+        
+        # 希望年収も考慮
+        hope_salary = seeker_profile.get("hope_conditions", {}).get("min_salary", 0)
+        if hope_salary > 0 and base_offer["年収"] < hope_salary * 0.8:
+            # 希望より20%以上低い場合は調整（ただし予算の範囲内で）
+            base_offer["年収"] = min(int(hope_salary * 0.8), int(base_salary * 1.3))
+        
+        # 役職調整（経験やスキルに基づいて）
+        if seeker_profile.get("tags", []) and ("リーダーシップ" in seeker_profile["tags"] or "マネジメント経験" in seeker_profile["tags"]):
+            if total_score >= 5:
+                base_offer["役職"] = "マネージャー"
+        
+        # 初期オファーのログ
+        print(f"初期オファー生成 - 評価スコア: {total_score}, 年収: {base_offer['年収']}, 役職: {base_offer['役職']}")
+        
+        return base_offer
+
     def create_job_posting(self, hr_agent) -> dict:
         """
         SimulatedHRから要望を受け取り、求人票（dict）を生成して返す。
@@ -66,4 +147,25 @@ class EmployerAgent(BaseAgent):
             "unique": unique,
             "persona": persona
         }
-        return job_posting 
+        return job_posting
+
+    async def screen_resume_llm(self, resume: str) -> dict:
+        """
+        LLMを使って書類審査（合否＋理由）を行う。
+        """
+        with open("prompts/employer_resume_screening.txt", encoding="utf-8") as f:
+            prompt_template = f.read().strip()
+        prompt = prompt_template.format(resume=resume)
+        result = await self.llm.generate_content_async(prompt)
+        # シンプルなパース（合否・理由）
+        lines = [l.strip() for l in result.split("\n") if l.strip()]
+        judgement = {"raw": result, "decision": None, "reason": None}
+        for l in lines:
+            if l.startswith("合否:"):
+                if "合格" in l:
+                    judgement["decision"] = "合格"
+                elif "不合格" in l:
+                    judgement["decision"] = "不合格"
+            if l.startswith("理由:"):
+                judgement["reason"] = l.replace("理由:", "").strip()
+        return judgement 
