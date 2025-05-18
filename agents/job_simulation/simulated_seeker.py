@@ -65,9 +65,42 @@ class SimulatedSeeker(BaseAgent):
         intent = await self.llm.generate_content_async(prompt)
         return intent.strip()
 
-    async def application_reason(self, job_intent: str) -> str:
+    async def application_reason(self, seeker_profile: dict, job: dict) -> str:
         with open("prompts/seeker_application_reason.txt", encoding="utf-8") as f:
             prompt_template = f.read().strip()
-        prompt = prompt_template.format(job_intent=job_intent)
+        # 必要な値を抽出
+        seeker_name = seeker_profile.get("name", "")
+        current_job = seeker_profile.get("current_job", {})
+        current_company = current_job.get("company", "")
+        current_role = current_job.get("role", "")
+        current_period = current_job.get("period", "")
+        skills = seeker_profile.get("skills", [])
+        skill1 = skills[0] if len(skills) > 0 else ""
+        skill2 = skills[1] if len(skills) > 1 else ""
+        values = ", ".join(seeker_profile.get("values", []))
+        pr = f"{seeker_name}は{current_company}で{current_role}として活躍し、{skill1}などのスキルを活かしてきました。{values}を大切にし、現場の課題解決やチームでの協働に強みがあります。新しい環境でも自律的に挑戦し、社会に貢献したいと考えています。"
+        job_position = job.get("position", "")
+        job_company = job.get("company", "")
+        job_mission = job.get("mission", "")
+        job_culture = ", ".join(job.get("culture_keywords", []))
+        job_persona = job.get("persona", "")
+        # 推しポイント（例：成長意欲や協調性など）
+        push_point = "成長意欲と協調性、困難な状況でもやり抜く粘り強さ"
+        prompt = prompt_template.format(
+            seeker_name=seeker_name,
+            current_company=current_company,
+            current_role=current_role,
+            current_period=current_period,
+            skill1=skill1,
+            skill2=skill2,
+            values=values,
+            pr=pr,
+            job_position=job_position,
+            job_company=job_company,
+            job_mission=job_mission,
+            job_culture=job_culture,
+            job_persona=job_persona,
+            push_point=push_point
+        )
         reason = await self.llm.generate_content_async(prompt)
         return reason.strip() 
