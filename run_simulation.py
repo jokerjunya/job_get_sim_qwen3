@@ -88,12 +88,24 @@ async def main():
             s += f'- 求める人物像: {job["persona"]}\n'
         return s
 
-    # --- 新規：求人作成フェーズ ---
+    # エージェント初期化（seeker_agentを先に）
+    seeker_agent = SeekerAgent()
     simulated_hr = SimulatedHR()
     employer_agent = EmployerAgent()
+
     hr_needs = simulated_hr.provide_needs()
     log_json("0.1. SimulatedHRの求人要望", hr_needs)
     log_md("0.1. SimulatedHRの求人要望", hr_needs)
+
+    # HRとEmployerAgentの会話を生成
+    with open("prompts/hr_employer_conversation.txt", encoding="utf-8") as f:
+        hr_emp_conv_prompt = f.read().strip()
+    hr_emp_conv_prompt_filled = hr_emp_conv_prompt.format(hr_needs=json.dumps(hr_needs, ensure_ascii=False, indent=2))
+    # LLMで会話生成（seeker_agentを流用）
+    hr_emp_conversation = await seeker_agent.llm.generate_content_async(hr_emp_conv_prompt_filled)
+    log_json("0.1.5. HRとEmployerAgentの会話", hr_emp_conversation)
+    log_md("0.1.5. HRとEmployerAgentの会話", hr_emp_conversation)
+
     job_posting = employer_agent.create_job_posting(simulated_hr)
     log_json("0.2. EmployerAgentが生成した求人票", job_posting)
     log_md("0.2. EmployerAgentが生成した求人票", format_job_posting_md(job_posting))
@@ -111,7 +123,6 @@ async def main():
     job_list = [job_posting]
 
     # エージェント初期化
-    seeker_agent = SeekerAgent()
     simulated_seeker = SimulatedSeeker()
     interviewer = SimulatedInterviewer()
 
