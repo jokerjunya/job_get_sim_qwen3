@@ -30,8 +30,8 @@ async def main():
             else:
                 lines = str(content).split('\n')
                 # 会話パートかどうか判定
-                is_conversation = all(
-                    l.strip().startswith(("seeker:", "seekerAI:")) or not l.strip()
+                is_conversation = any(
+                    l.strip().startswith(("seeker:", "seekerAI:", "HR:", "EmployerAgent:"))
                     for l in lines if l.strip()
                 )
                 # 箇条書きリストかどうか判定
@@ -40,7 +40,12 @@ async def main():
                     for l in lines if l.strip()
                 )
                 out = ''
-                if is_conversation or is_list:
+                if is_conversation:
+                    # 会話パートの場合は各行の後に空行を入れて、行末に2つのスペースを追加
+                    for para in lines:
+                        if para.strip():
+                            out += f'{para.strip()}  \n\n'  # 行末に2つのスペースを追加して強制改行＋空行
+                elif is_list:
                     for para in lines:
                         if para.strip():
                             out += f'{para.strip()}\n'
@@ -49,7 +54,7 @@ async def main():
                         if para.strip():
                             out += f'{para.strip()}\n\n'
                 # 連続する空行を1つに正規化
-                out = re.sub(r'\n{2,}', '\n', out)
+                out = re.sub(r'\n{3,}', '\n\n', out)
                 f.write(out)
             f.write('\n')
     def step_title(title):
