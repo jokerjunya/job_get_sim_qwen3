@@ -5,5 +5,5 @@ __pycache__/
 *.pyd
 *.swp
 .DS_Store
-logs/
+/logs/
 .env 
