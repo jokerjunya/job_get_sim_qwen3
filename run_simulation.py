@@ -28,68 +28,64 @@ async def main():
                 for k, v in content.items():
                     f.write(f'- **{k}**: {json.dumps(v, ensure_ascii=False, indent=2) if isinstance(v, (dict, list)) else v}\n')
             else:
-                lines = str(content).split('\n')
+                # まず会話パートの発言ごとに分割する正規化処理
+                conversation_speakers = ["seeker:", "seekerAI:", "HR:", "EmployerAgent:"]
+                # 1行に複数発言が含まれている場合も分割
+                def split_conversation(text):
+                    import re
+                    # 先頭以外の発言ラベルの前に改行を挿入
+                    pattern = r'(?<!^)(' + '|'.join(re.escape(s) for s in conversation_speakers) + r')'
+                    return re.sub(pattern, r'\n\1', text)
+                normalized_content = split_conversation(str(content))
+                lines = normalized_content.split('\n')
                 
-                # 会話パートかどうか判定（より多くのパターンに対応）
+                # 会話パートかどうか判定
                 is_conversation = any(
-                    l.strip().startswith(("seeker:", "seekerAI:", "HR:", "EmployerAgent:"))
+                    l.strip().startswith(tuple(conversation_speakers))
                     for l in lines if l.strip()
                 )
-                
                 # 構造化テキストかどうか判定（面接回答、評価など）
                 is_structured = any(
                     l.strip().startswith(("**回答:", "**評価:", "**エピソード", "【", "回答:", "評価:", "理由:", "成果:", "コメント:"))
                     for l in lines if l.strip()
                 )
-                
-                # 箇条書きリストかどうか判定（より多くの箇条書き記号に対応）
+                # 箇条書きリストかどうか判定
                 is_list = all(
                     l.strip().startswith(('-', '・', '*', '1.', '2.', '3.')) or not l.strip()
                     for l in lines if l.strip()
                 )
-                
-                # セクション構造を持つかどうか判定（「【〜】」などで区切られた構造）
+                # セクション構造を持つかどうか判定
                 has_sections = any(
                     '【' in l and '】' in l
                     for l in lines if l.strip()
                 )
-                
                 out = ''
                 if is_conversation:
-                    # 会話パートの場合は各行の後に空行を入れて、行末に2つのスペースを追加
                     for para in lines:
                         if para.strip():
-                            out += f'{para.strip()}  \n\n'  # 行末に2つのスペースを追加して強制改行＋空行
+                            out += f'{para.strip()}  \n\n'
                 elif is_structured:
-                    # 構造化テキストは各行の末尾に2つのスペースを追加
                     for para in lines:
                         if para.strip():
-                            # 強調表現（**〜**）や見出し（【〜】）で始まる行の後には空行を入れる
                             if para.strip().startswith(('**', '【')) or ':' in para.strip():
                                 out += f'{para.strip()}  \n\n'
                             else:
                                 out += f'{para.strip()}  \n'
                 elif has_sections:
-                    # セクションを持つ構造化テキスト（履歴書、職務経歴書など）
                     for para in lines:
                         if para.strip():
                             if '【' in para and '】' in para:
-                                # セクション見出しの後には空行を入れる
                                 out += f'{para.strip()}  \n\n'
                             else:
                                 out += f'{para.strip()}  \n'
                 elif is_list:
-                    # 箇条書きリストはそのまま
                     for para in lines:
                         if para.strip():
                             out += f'{para.strip()}\n'
                 else:
-                    # その他の通常テキストは段落ごとに空行を入れる
                     for para in lines:
                         if para.strip():
                             out += f'{para.strip()}\n\n'
-                
-                # 連続する空行を最大2つまでに正規化
                 out = re.sub(r'\n{3,}', '\n\n', out)
                 f.write(out)
             f.write('\n')
