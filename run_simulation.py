@@ -357,6 +357,27 @@ async def main():
     else:
         print("求人の話を聞きたい意思が示されなかったため、シミュレーションを終了します。")
         return
+        
+    # シミュレーション完了後、examples/logsにサンプルログをコピー
+    print("\n【シミュレーション完了】")
+    print(f"ログは logs/simulation_log_{now_str}.md と logs/simulation_log_{now_str}.jsonl に保存されました")
+    
+    # examples/logsディレクトリの作成とログファイルのコピー
+    try:
+        # examples/logsディレクトリが存在しない場合は作成
+        os.makedirs('examples/logs', exist_ok=True)
+        
+        # 最新ログをコピー
+        import shutil
+        shutil.copy(log_md_path, 'examples/logs/latest_simulation.md')
+        shutil.copy(log_path, 'examples/logs/latest_simulation.jsonl')
+        
+        print("\n【サンプルログを更新】")
+        print("examples/logs/latest_simulation.md と examples/logs/latest_simulation.jsonl を更新しました")
+        print("※このサンプルログはGitHubリポジトリに含まれます。個人情報が含まれていないか確認してください。")
+    except Exception as e:
+        print(f"\n【サンプルログ更新エラー】: {e}")
+        print("examples/logsへのコピーに失敗しました。")
 
 if __name__ == "__main__":
     asyncio.run(main()) 
