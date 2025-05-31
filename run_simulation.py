@@ -20,6 +20,406 @@ async def main():
     # logのリスト（後で面接評価を取得するために使用）
     logs = []
     html_content = []  # HTMLコンテンツを保存するリスト
+    current_progress = ""  # 現在の進捗状況
+    completed_steps = []  # 完了したステップリスト
+    is_simulation_completed = False  # シミュレーション完了フラグ
+    
+    # リアルタイムHTML生成のための初期化
+    def init_realtime_html():
+        html_template = '''<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>転職AIエージェント リアルタイムログ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="3">
+  <style>
+    body {
+      font-family: 'Helvetica Neue', 'Arial', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0;
+      padding: 2em;
+      min-height: 100vh;
+      color: white;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 2em;
+    }
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 0.5em;
+      font-weight: 300;
+    }
+    .subtitle {
+      font-size: 1.2em;
+      opacity: 0.9;
+    }
+    .progress-container {
+      background: rgba(255,255,255,0.1);
+      border-radius: 15px;
+      padding: 2em;
+      margin: 2em 0;
+      backdrop-filter: blur(10px);
+    }
+    .progress-bar {
+      background: rgba(255,255,255,0.2);
+      border-radius: 10px;
+      height: 8px;
+      margin: 1em 0;
+      overflow: hidden;
+    }
+    .progress-fill {
+      background: linear-gradient(90deg, #00ff88, #00ccff);
+      height: 100%;
+      border-radius: 10px;
+      transition: width 0.5s ease;
+    }
+    .current-step {
+      font-size: 1.3em;
+      font-weight: 500;
+      margin: 1em 0;
+      padding: 1em;
+      background: rgba(255,255,255,0.15);
+      border-radius: 10px;
+      border-left: 4px solid #00ff88;
+    }
+    .steps-list {
+      margin-top: 2em;
+    }
+    .step-item {
+      display: flex;
+      align-items: center;
+      padding: 0.8em 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .step-status {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      margin-right: 1em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8em;
+    }
+    .step-completed {
+      background: #00ff88;
+      color: #000;
+    }
+    .step-current {
+      background: #ffaa00;
+      color: #000;
+    }
+    .step-pending {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+    .step-text {
+      flex: 1;
+    }
+    .loading-spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top: 2px solid white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 1em;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .completion-message {
+      text-align: center;
+      font-size: 1.5em;
+      margin: 2em 0;
+      padding: 2em;
+      background: rgba(0,255,136,0.2);
+      border-radius: 15px;
+      border: 2px solid #00ff88;
+    }
+    .refresh-info {
+      text-align: center;
+      opacity: 0.7;
+      font-size: 0.9em;
+      margin-top: 2em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🤖 転職AIエージェント</h1>
+      <div class="subtitle">リアルタイムシミュレーション</div>
+    </div>
+    
+    <div class="progress-container">
+      <div class="current-step">
+        📍 シミュレーション開始準備中...
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: 0%"></div>
+      </div>
+      <div style="text-align: center; margin: 1em 0;">
+        進捗: 0/20 ステップ (0.0%)
+      </div>
+      
+      <div class="steps-list">
+        <h3>実行ステップ</h3>
+        <div class="step-item">
+          <div class="step-status step-pending">1</div>
+          <div class="step-text">準備中...</div>
+        </div>
+      </div>
+      
+      <div class="refresh-info">
+        このページは3秒ごとに自動更新されます
+      </div>
+    </div>
+  </div>
+</body>
+</html>'''
+        
+        with open(log_html_path, 'w', encoding='utf-8') as f:
+            f.write(html_template)
+        
+        print(f"📱 リアルタイムHTMLログを開始: {log_html_path}")
+        print(f"ブラウザで {os.path.abspath(log_html_path)} を開いてください")
+    
+    def update_progress(progress):
+        nonlocal current_progress
+        current_progress = progress
+        update_realtime_html()
+    
+    # update_realtime_html関数を完全実装
+    def update_realtime_html(is_completed=False):
+        nonlocal is_simulation_completed
+        if is_completed:
+            is_simulation_completed = True
+        
+        # 動的な進捗計算
+        completed_count = len(completed_steps)
+        
+        # 進行中でない場合、最低でも20ステップを予想
+        # 完了済みの場合、実際のステップ数をそのまま使用
+        if is_simulation_completed:
+            total_steps = completed_count
+            progress_percentage = 100
+        else:
+            # 実行中は実際のステップ数より多めに見積もり
+            estimated_total = max(20, completed_count + 5)
+            total_steps = estimated_total
+            progress_percentage = min(95, (completed_count / total_steps) * 100)  # 95%まで
+        
+        # 現在のステップ判定
+        current_step_text = current_progress if current_progress else "待機中..."
+        
+        # 完了時の処理
+        if is_simulation_completed:
+            current_step_text = "🎉 シミュレーション完了！"
+        
+        # 実際に実行されたステップリストを使用
+        steps_html = ""
+        for i, step_name in enumerate(completed_steps):
+            status_class = "step-completed"
+            status_icon = "✓"
+            
+            steps_html += f'''
+            <div class="step-item">
+              <div class="step-status {status_class}">{status_icon}</div>
+              <div class="step-text">{step_name}</div>
+            </div>'''
+        
+        # 現在進行中のステップがある場合
+        if current_progress and not is_simulation_completed:
+            steps_html += f'''
+            <div class="step-item">
+              <div class="step-status step-current">●</div>
+              <div class="step-text">{current_progress} <div class="loading-spinner"></div></div>
+            </div>'''
+        
+        # 完了時の特別メッセージ
+        completion_html = ""
+        if is_simulation_completed:
+            completion_html = '''
+            <div class="completion-message">
+              🎉 転職シミュレーションが完了しました！<br>
+              詳細なログは静的版HTMLファイルをご確認ください。
+            </div>'''
+        
+        # HTMLテンプレート更新
+        html_template = f'''<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>転職AIエージェント リアルタイムログ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="3">
+  <style>
+    body {{
+      font-family: 'Helvetica Neue', 'Arial', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0;
+      padding: 2em;
+      min-height: 100vh;
+      color: white;
+    }}
+    .container {{
+      max-width: 800px;
+      margin: 0 auto;
+    }}
+    .header {{
+      text-align: center;
+      margin-bottom: 2em;
+    }}
+    h1 {{
+      font-size: 2.5em;
+      margin-bottom: 0.5em;
+      font-weight: 300;
+    }}
+    .subtitle {{
+      font-size: 1.2em;
+      opacity: 0.9;
+    }}
+    .progress-container {{
+      background: rgba(255,255,255,0.1);
+      border-radius: 15px;
+      padding: 2em;
+      margin: 2em 0;
+      backdrop-filter: blur(10px);
+    }}
+    .progress-bar {{
+      background: rgba(255,255,255,0.2);
+      border-radius: 10px;
+      height: 8px;
+      margin: 1em 0;
+      overflow: hidden;
+    }}
+    .progress-fill {{
+      background: linear-gradient(90deg, #00ff88, #00ccff);
+      height: 100%;
+      border-radius: 10px;
+      transition: width 0.5s ease;
+    }}
+    .current-step {{
+      font-size: 1.3em;
+      font-weight: 500;
+      margin: 1em 0;
+      padding: 1em;
+      background: rgba(255,255,255,0.15);
+      border-radius: 10px;
+      border-left: 4px solid #00ff88;
+    }}
+    .steps-list {{
+      margin-top: 2em;
+    }}
+    .step-item {{
+      display: flex;
+      align-items: center;
+      padding: 0.8em 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }}
+    .step-status {{
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      margin-right: 1em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8em;
+    }}
+    .step-completed {{
+      background: #00ff88;
+      color: #000;
+    }}
+    .step-current {{
+      background: #ffaa00;
+      color: #000;
+    }}
+    .step-pending {{
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+    }}
+    .step-text {{
+      flex: 1;
+    }}
+    .loading-spinner {{
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top: 2px solid white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 1em;
+    }}
+    @keyframes spin {{
+      0% {{ transform: rotate(0deg); }}
+      100% {{ transform: rotate(360deg); }}
+    }}
+    .completion-message {{
+      text-align: center;
+      font-size: 1.5em;
+      margin: 2em 0;
+      padding: 2em;
+      background: rgba(0,255,136,0.2);
+      border-radius: 15px;
+      border: 2px solid #00ff88;
+    }}
+    .refresh-info {{
+      text-align: center;
+      opacity: 0.7;
+      font-size: 0.9em;
+      margin-top: 2em;
+    }}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🤖 転職AIエージェント</h1>
+      <div class="subtitle">リアルタイムシミュレーション</div>
+    </div>
+    
+    <div class="progress-container">
+      <div class="current-step">
+        {current_step_text}
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: {progress_percentage}%"></div>
+      </div>
+      <div style="text-align: center; margin: 1em 0;">
+        進捗: {completed_count}/{total_steps} ステップ ({progress_percentage:.1f}%)
+      </div>
+      
+      {completion_html}
+      
+      <div class="steps-list">
+        <h3>実行ステップ</h3>
+        {steps_html}
+      </div>
+      
+      <div class="refresh-info">
+        このページは3秒ごとに自動更新されます
+      </div>
+    </div>
+  </div>
+</body>
+</html>'''
+        
+        # リアルタイムHTMLファイルへの書き込み
+        with open(log_html_path, 'w', encoding='utf-8') as f:
+            f.write(html_template)
+        
+        # リアルタイム表示用の固定ファイルにもコピー
+        with open('examples/logs/latest_simulation.html', 'w', encoding='utf-8') as f:
+            f.write(html_template)
     
     def log_json(step, content):
         logs.append({"step": step, "content": content})
@@ -109,7 +509,24 @@ async def main():
             f.write('\n')
     
     def log_html(step, content):
-        html_section = f'<h2>{step}</h2>\n'
+        # ステップ完了を記録
+        completed_steps.append(step)
+        
+        # ステップの分類とメタデータを決定
+        step_meta = classify_step(step, content)
+        
+        # セクション構造で生成
+        html_section = f'''
+<div class="content-section" data-view="{step_meta['view']}" data-process="{step_meta['process']}">
+  <div class="section-header">
+    <h2 class="section-title">{step}</h2>
+    <div class="section-meta">
+      <span class="meta-tag {step_meta['view']}">{step_meta['view_label']}</span>
+      {f'<span class="meta-tag {step_meta["type"]}">{step_meta["type_label"]}</span>' if step_meta.get('type') else ''}
+    </div>
+  </div>
+  <div class="section-content">
+'''
         
         if isinstance(content, dict):
             html_section += '<ul>\n'
@@ -118,131 +535,237 @@ async def main():
                 html_section += f'<li><strong>{k}</strong>: {formatted_value}</li>\n'
             html_section += '</ul>\n'
         else:
-            # 会話パートの発言者を識別
-            conversation_speakers = ["seeker:", "seekerAI:", "HR:", "EmployerAgent:"]
             content_str = str(content)
             
-            # 会話形式かどうかを判定
-            is_conversation = any(speaker in content_str for speaker in conversation_speakers)
+            # 会話形式の判定と処理
+            if step_meta['type'] == 'conversation':
+                html_section += generate_chat_html(content_str, step_meta)
             
-            # 求人票か履歴書かを判定
-            is_job_posting = "【基本情報】" in content_str and ("【スキル・条件】" in content_str or "【特徴・ミッション】" in content_str)
-            is_resume = "【職務経歴】" in content_str or "【スキル】" in content_str or "【自己PR】" in content_str
+            # カード形式の判定と処理
+            elif step_meta['type'] in ['job-posting', 'resume', 'offer']:
+                html_section += generate_card_html(content_str, step_meta)
             
-            # 面接質問・回答・評価の判定
-            is_interview_question = "面接質問" in step or "質問" in step
-            is_interview_answer = "面接回答" in step or "回答" in step
-            is_interview_evaluation = "面接官の評価" in step or "評価" in step
+            # 結果・判定の強調表示
+            elif step_meta['type'] == 'decision':
+                html_section += generate_result_html(content_str, step_meta)
             
-            # 判定結果の判定
-            is_judgement = "判定" in step or "合否" in step or "最終決断" in step
+            # 面接Q&A
+            elif step_meta['type'] == 'interview':
+                html_section += generate_interview_html(content_str, step_meta)
             
-            # オファー関連の判定
-            is_offer = "オファー" in step or "交渉" in step
-            
-            if is_conversation:
-                # 会話部分をチャットUIに変換
-                html_section += '<div class="chat-container">\n'
-                
-                # 会話を話者ごとに分割
-                lines = re.split(r'(seeker:|seekerAI:|HR:|EmployerAgent:)', content_str)
-                current_speaker = ""
-                message = ""
-                
-                for i, line in enumerate(lines):
-                    if line in ["seeker:", "seekerAI:", "HR:", "EmployerAgent:"]:
-                        # 前の発言があれば出力
-                        if message and current_speaker:
-                            sender_class = "agent" if current_speaker == "seekerAI:" else "hr"
-                            sender_name = "転職AI" if current_speaker == "seekerAI:" else \
-                                         "求職者" if current_speaker == "seeker:" else \
-                                         "人事担当" if current_speaker == "HR:" else "企業担当"
-                            
-                            html_section += f'<div class="chat-bubble {sender_class}">\n'
-                            html_section += f'<div class="sender">{sender_name}</div>\n'
-                            html_section += f'{message.strip()}\n'
-                            html_section += '</div>\n'
-                        
-                        # 話者を更新
-                        current_speaker = line
-                        message = ""
-                    else:
-                        message += line
-                
-                # 最後の発言を出力
-                if message and current_speaker:
-                    sender_class = "agent" if current_speaker == "seekerAI:" else "hr"
-                    sender_name = "転職AI" if current_speaker == "seekerAI:" else \
-                                 "求職者" if current_speaker == "seeker:" else \
-                                 "人事担当" if current_speaker == "HR:" else "企業担当"
-                    
-                    html_section += f'<div class="chat-bubble {sender_class}">\n'
-                    html_section += f'<div class="sender">{sender_name}</div>\n'
-                    html_section += f'{message.strip()}\n'
-                    html_section += '</div>\n'
-                
-                html_section += '</div>\n'
-            
-            elif is_job_posting:
-                # 求人票をカード表示
-                html_section += '<div class="card job-posting">\n'
-                html_section += '<h3>求人情報</h3>\n'
-                content_str = re.sub(r'\*\*【(.+?)】\*\*', r'<h4>\1</h4>', content_str)
-                content_str = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content_str)
-                html_section += content_str.replace('\n', '<br>\n')
-                html_section += '</div>\n'
-            
-            elif is_resume:
-                # 履歴書をカード表示
-                html_section += '<div class="card resume">\n'
-                html_section += '<h3>履歴書・職務経歴書</h3>\n'
-                content_str = re.sub(r'\*\*【(.+?)】\*\*', r'<h4>\1</h4>', content_str)
-                content_str = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content_str)
-                html_section += content_str.replace('\n', '<br>\n')
-                html_section += '</div>\n'
-            
-            elif is_interview_question or is_interview_answer:
-                # 面接Q&A表示
-                html_section += '<div class="interview-qa">\n'
-                title = "面接質問" if is_interview_question else "面接回答"
-                html_section += f'<h3>{title}</h3>\n'
-                # **回答:** などの形式を調整
-                content_str = re.sub(r'\*\*(.+?):\*\*', r'<strong>\1:</strong>', content_str)
-                html_section += f'<p>{content_str.replace("\n", "<br>\n")}</p>\n'
-                html_section += '</div>\n'
-            
-            elif is_interview_evaluation:
-                # 面接評価表示
-                html_section += '<div class="interview-qa">\n'
-                html_section += '<h3>面接評価</h3>\n'
-                # **評価:** などの形式を調整
-                content_str = re.sub(r'\*\*(.+?):\*\*', r'<strong>\1:</strong>', content_str)
-                html_section += f'<p>{content_str.replace("\n", "<br>\n")}</p>\n'
-                html_section += '</div>\n'
-            
-            elif is_judgement:
-                # 判定結果表示
-                result_class = "positive-result" if "合格" in content_str or "受諾" in content_str else "negative-result"
-                html_section += f'<div class="result-box {result_class}">\n'
-                html_section += f'<p>{content_str.replace("\n", "<br>\n")}</p>\n'
-                html_section += '</div>\n'
-            
-            elif is_offer:
-                # オファー情報表示
-                html_section += '<div class="card">\n'
-                html_section += '<h3>オファー情報</h3>\n'
-                # **年収:** などの形式を調整
-                content_str = re.sub(r'\*\*(.+?):\*\*', r'<strong>\1:</strong>', content_str)
-                html_section += f'<p>{content_str.replace("\n", "<br>\n")}</p>\n'
-                html_section += '</div>\n'
-            
+            # その他の通常コンテンツ
             else:
-                # その他のコンテンツは通常のテキスト表示
                 html_section += f'<p>{content_str.replace("\n", "<br>\n")}</p>\n'
         
+        html_section += '''
+  </div>
+</div>
+'''
+        
+        # 既存のHTMLコンテンツの最後のステップを更新
+        if html_content:
+            html_content[-1] = html_content[-1].replace('current-step', 'completed-step')
+        
         html_content.append(html_section)
+        
+        # 進捗表示をクリア
+        update_progress("")
+        
+        # リアルタイムHTML更新
+        update_realtime_html()
+    
+    def classify_step(step, content):
+        """ステップを分類してメタデータを返す"""
+        content_str = str(content).lower()
+        step_lower = step.lower()
+        
+        # 基本分類
+        meta = {
+            'view': 'all',
+            'view_label': '共通',
+            'process': 'other',
+            'type': 'text',
+            'type_label': 'テキスト'
+        }
+        
+        # プロセス分類
+        if any(kw in step_lower for kw in ['転職相談', '会話']):
+            meta['process'] = 'consultation'
+        elif any(kw in step_lower for kw in ['求人', '概要', '推し']):
+            meta['process'] = 'job-proposal'
+        elif any(kw in step_lower for kw in ['書類', '選考', '履歴書']):
+            meta['process'] = 'document-screening'
+        elif any(kw in step_lower for kw in ['面接', 'interview']):
+            meta['process'] = 'interview'
+        elif any(kw in step_lower for kw in ['オファー', '交渉', 'offer']):
+            meta['process'] = 'offer'
+        elif any(kw in step_lower for kw in ['判断', '決断', '受諾', '辞退']):
+            meta['process'] = 'final-decision'
+        
+        # 視点分類
+        if any(kw in step_lower for kw in ['企業側', 'empai', 'simhr', 'hr', '企業判定']):
+            meta['view'] = 'company'
+            meta['view_label'] = '企業視点'
+        elif any(kw in step_lower for kw in ['求職者側', 'seeker', '求職者判定']):
+            meta['view'] = 'seeker'
+            meta['view_label'] = '求職者視点'
+        elif any(kw in step_lower for kw in ['判定', '合否', '決断', '結果']):
+            meta['view'] = 'decision'
+            meta['view_label'] = '判定・結果'
+        
+        # コンテンツタイプ分類
+        if any(speaker in content_str for speaker in ['seeker:', 'seekerai:', 'hr:', 'empai:', '👤', '🎯', '👨‍💼', '👩‍💻', '🤖']):
+            meta['type'] = 'conversation'
+            meta['type_label'] = '会話'
+        elif any(kw in content_str for kw in ['【基本情報】', '【スキル・条件】', '【特徴・ミッション】']):
+            meta['type'] = 'job-posting'
+            meta['type_label'] = '求人票'
+        elif any(kw in content_str for kw in ['【職務経歴】', '【スキル】', '【自己pr】']):
+            meta['type'] = 'resume'
+            meta['type_label'] = '履歴書'
+        elif any(kw in step_lower for kw in ['質問', '回答', '面接']):
+            meta['type'] = 'interview'
+            meta['type_label'] = '面接'
+        elif any(kw in step_lower for kw in ['判定', '合否', '決断', '最終決断']):
+            meta['type'] = 'decision'
+            meta['type_label'] = '判定'
+        elif any(kw in step_lower for kw in ['オファー', '交渉']):
+            meta['type'] = 'offer'
+            meta['type_label'] = 'オファー'
+        
+        return meta
+    
+    def generate_chat_html(content_str, meta):
+        """チャット形式のHTML生成"""
+        html = '<div class="chat-container">\n'
+        
+        # アイコン付き発言者を識別
+        icon_speakers = {
+            '👤': ('seeker', '求職者'),
+            '🎯': ('agent', '転職AI'),
+            '👨‍💼': ('hr', 'HR'),
+            '👩‍💻': ('hr', '面接官'),
+            '🤖': ('empai', 'AI')
+        }
+        
+        # 従来の発言者も識別
+        text_speakers = {
+            'seeker:': ('seeker', '求職者'),
+            'seekerai:': ('agent', '転職AI'),
+            'hr:': ('hr', '人事'),
+            'employeragent:': ('hr', '企業担当')
+        }
+        
+        # 行ごとに処理
+        lines = content_str.split('\n')
+        current_speaker = ""
+        current_class = ""
+        current_name = ""
+        message = ""
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            # アイコン付き発言者を検出
+            found_speaker = False
+            for icon, (class_name, display_name) in icon_speakers.items():
+                if line.startswith(icon):
+                    if message and current_speaker:
+                        html += generate_chat_bubble(message, current_class, current_name)
+                    current_speaker = icon
+                    current_class = class_name
+                    current_name = display_name
+                    message = line[len(icon):].strip()
+                    found_speaker = True
+                    break
+            
+            if not found_speaker:
+                # 従来の発言者を検出
+                line_lower = line.lower()
+                for speaker, (class_name, display_name) in text_speakers.items():
+                    if line_lower.startswith(speaker):
+                        if message and current_speaker:
+                            html += generate_chat_bubble(message, current_class, current_name)
+                        current_speaker = speaker
+                        current_class = class_name
+                        current_name = display_name
+                        message = line[len(speaker):].strip()
+                        found_speaker = True
+                        break
+                
+                if not found_speaker and current_speaker:
+                    # 継続メッセージ
+                    message += " " + line
+        
+        # 最後のメッセージを出力
+        if message and current_speaker:
+            html += generate_chat_bubble(message, current_class, current_name)
+        
+        html += '</div>\n'
+        return html
+    
+    def generate_chat_bubble(message, class_name, display_name):
+        """チャットバブルHTML生成"""
+        return f'''
+<div class="chat-bubble {class_name}">
+  <div class="sender">{display_name}</div>
+  {message}
+</div>
+'''
+    
+    def generate_card_html(content_str, meta):
+        """カード形式のHTML生成"""
+        card_class = meta['type']
+        title = meta['type_label']
+        
+        # 構造化された情報を解析
+        content_formatted = content_str.replace('\n', '<br>\n')
+        content_formatted = re.sub(r'\*\*【(.+?)】\*\*', r'<h4>\1</h4>', content_formatted)
+        content_formatted = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content_formatted)
+        
+        return f'''
+<div class="info-card {card_class}">
+  <div class="card-header">
+    <h3 class="card-title">{title}</h3>
+  </div>
+  {content_formatted}
+</div>
+'''
+    
+    def generate_result_html(content_str, meta):
+        """結果・判定のHTML生成"""
+        # ポジティブ・ネガティブ判定
+        is_positive = any(kw in content_str for kw in ['合格', '通過', '受諾', '継続', '進む', 'オファー段階'])
+        is_negative = any(kw in content_str for kw in ['不合格', '見送り', '辞退', '終了'])
+        
+        result_class = 'positive' if is_positive else 'negative' if is_negative else ''
+        
+        return f'''
+<div class="result-highlight {result_class}">
+  {content_str.replace('\n', '<br>\n')}
+</div>
+'''
+    
+    def generate_interview_html(content_str, meta):
+        """面接Q&A形式のHTML生成"""
+        title = "面接質問" if "質問" in meta['type_label'] else "面接回答"
+        
+        # 構造化された情報を調整
+        content_formatted = re.sub(r'\*\*(.+?):\*\*', r'<strong>\1:</strong>', content_str)
+        
+        return f'''
+<div class="info-card interview">
+  <div class="card-header">
+    <h3 class="card-title">{title}</h3>
+  </div>
+  <p>{content_formatted.replace('\n', '<br>\n')}</p>
+</div>
+'''
     
     def generate_html_file():
+        # 最終的なHTMLファイル生成（従来の機能）
         template_path = 'logs/転職AIエージェント_シミュレーションログ_UI形式_最終版.html'
         try:
             with open(template_path, 'r', encoding='utf-8') as template_file:
@@ -252,150 +775,13 @@ async def main():
             content_placeholder = '<!-- Canvasから貼り付けた最終版がここに入ります -->'
             complete_html = template.replace(content_placeholder, '\n'.join(html_content))
             
-            with open(log_html_path, 'w', encoding='utf-8') as f:
+            # 静的版のファイル名
+            static_html_path = log_html_path.replace('.html', '_static.html')
+            with open(static_html_path, 'w', encoding='utf-8') as f:
                 f.write(complete_html)
+            print(f"📄 静的版HTMLログも保存: {static_html_path}")
         except FileNotFoundError:
-            print(f"警告: HTMLテンプレートファイル '{template_path}' が見つかりません。デフォルトテンプレートを使用します。")
-            # デフォルトのHTMLテンプレート
-            html_template = '''<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>転職AIエージェント ログUI</title>
-  <style>
-    body {
-      font-family: 'Helvetica Neue', 'Arial', sans-serif;
-      background-color: #f5f7fa;
-      padding: 2em;
-      line-height: 1.6;
-      color: #333;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    h1 {
-      color: #2c3e50;
-      text-align: center;
-      margin-bottom: 1.5em;
-      border-bottom: 2px solid #3498db;
-      padding-bottom: 0.5em;
-    }
-    h2 {
-      color: #2c3e50;
-      border-left: 6px solid #3498db;
-      padding-left: 0.8em;
-      margin-top: 2em;
-      font-size: 1.5em;
-      background-color: #f8f9fa;
-      padding: 0.5em;
-      border-radius: 0 5px 5px 0;
-    }
-    .chat-container {
-      display: flex;
-      flex-direction: column;
-      gap: 1em;
-      margin: 1.5em 0;
-    }
-    .chat-bubble {
-      max-width: 70%;
-      padding: 1em 1.5em;
-      border-radius: 18px;
-      line-height: 1.5;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      position: relative;
-      margin: 0.5em 0;
-    }
-    .hr {
-      background: #e1f0ff;
-      align-self: flex-start;
-      border-bottom-left-radius: 5px;
-    }
-    .agent {
-      background: #e9ffe1;
-      align-self: flex-end;
-      border-bottom-right-radius: 5px;
-    }
-    .sender {
-      font-weight: bold;
-      margin-bottom: 0.5em;
-      color: #2c3e50;
-    }
-    ul {
-      padding-left: 1.5em;
-      margin: 0.5em 0;
-    }
-    li {
-      margin-bottom: 0.5em;
-    }
-    hr {
-      margin: 2em 0;
-      border: none;
-      border-top: 1px solid #eaeaea;
-    }
-    .card {
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-      padding: 1.5em;
-      margin: 1.5em 0;
-      border-left: 5px solid #3498db;
-    }
-    .job-posting {
-      border-left-color: #3498db;
-    }
-    .resume {
-      border-left-color: #2ecc71;
-    }
-    .card h3 {
-      margin-top: 0;
-      color: #2c3e50;
-      border-bottom: 1px solid #eaeaea;
-      padding-bottom: 0.5em;
-    }
-    p {
-      margin: 0.8em 0;
-    }
-    strong {
-      color: #2c3e50;
-    }
-    .interview-qa {
-      background-color: #f9f9f9;
-      border-radius: 8px;
-      padding: 1em;
-      margin: 1em 0;
-      border-left: 4px solid #f39c12;
-    }
-    .result-box {
-      background-color: #f8f9fa;
-      border-radius: 8px;
-      padding: 1em;
-      margin: 1em 0;
-      border-left: 4px solid #9b59b6;
-      font-weight: bold;
-    }
-    .positive-result {
-      border-left-color: #2ecc71;
-    }
-    .negative-result {
-      border-left-color: #e74c3c;
-    }
-  </style>
-</head>
-<body>
-  <h1>転職AIエージェント シミュレーションログ（UI形式）</h1>
-  <!-- コンテンツ -->
-  {content}
-</body>
-</html>'''
-            
-            complete_html = html_template.replace('{content}', '\n'.join(html_content))
-            
-            with open(log_html_path, 'w', encoding='utf-8') as f:
-                f.write(complete_html)
-            
-            # テンプレートファイルも保存しておく
-            with open(template_path, 'w', encoding='utf-8') as f:
-                f.write(html_template.replace('{content}', '<!-- Canvasから貼り付けた最終版がここに入ります -->'))
-            print(f"HTMLテンプレートファイル '{template_path}' を新規作成しました。")
+            print(f"警告: HTMLテンプレートファイル '{template_path}' が見つかりません。")
     
     def step_title(title):
         nonlocal step_counter
@@ -436,9 +822,13 @@ async def main():
             s += f'- 求める人物像: {job["persona"]}\n'
         return s
 
+    # リアルタイムHTML初期化
+    init_realtime_html()
+
     # エージェント初期化（seeker_agentを先に）
     seeker_agent = SeekerAgent()
-    simulated_hr = SimulatedHR(llm=seeker_agent.llm)
+    simulated_hr = SimulatedHR()
+    simulated_hr.llm = seeker_agent.llm
     employer_agent = EmployerAgent()
 
     hr_needs = simulated_hr.provide_needs()
@@ -451,7 +841,11 @@ async def main():
         hr_emp_conv_prompt = f.read().strip()
     hr_emp_conv_prompt_filled = hr_emp_conv_prompt.format(hr_needs=json.dumps(hr_needs, ensure_ascii=False, indent=2))
     # LLMで会話生成（seeker_agentを流用）
-    hr_emp_conversation = await seeker_agent.llm.generate_content_async(hr_emp_conv_prompt_filled)
+    hr_emp_conversation = await seeker_agent.llm.generate_content_async(
+        hr_emp_conv_prompt_filled, 
+        agent_name="HRとEmployerの会話生成",
+        progress_callback=update_progress
+    )
     
     # 会話の整形処理
     # LLMの出力から余分な「**」や改行を除去し、整形する
@@ -504,7 +898,7 @@ async def main():
         # 求人提案フロー
         step = step_title("求人概要提示")
         job = job_list[0]  # 1件のみ前提
-        job_summary = await seeker_agent.propose_job_summary(job)
+        job_summary = await seeker_agent.propose_job_summary(job, progress_callback=update_progress)
         print("\n【キャリアアドバイザーの求人概要】")
         print(job_summary)
         log_json(step, job_summary)
@@ -512,7 +906,7 @@ async def main():
         log_html(step, job_summary)
 
         step = step_title("求人推しプレゼン")
-        job_pitch = await seeker_agent.propose_job_pitch(seeker_profile, job)
+        job_pitch = await seeker_agent.propose_job_pitch(seeker_profile, job, progress_callback=update_progress)
         print("\n【キャリアアドバイザーの推しポイント】")
         print(job_pitch)
         log_json(step, job_pitch)
@@ -539,6 +933,7 @@ async def main():
 
         if any(kw in job_intent for kw in ["見送", "応募しない", "辞退", "やめる", "考えたい"]):
             print("応募辞退のためシミュレーションを終了します。")
+            update_realtime_html(is_completed=True)  # 完了状態に更新
             generate_html_file()  # HTML生成
             return
                 
@@ -560,7 +955,7 @@ async def main():
         log_html(step, empai_judgement["raw"])
 
         step = step_title("simhrの意見")
-        simhr_opinion = await simulated_hr.opine_on_resume_screening(empai_judgement)
+        simhr_opinion = await simulated_hr.opine_on_resume_screening(resume, empai_judgement)
         print("\n【simhrの意見】")
         print(simhr_opinion["raw"])
         log_json(step, simhr_opinion)
@@ -570,12 +965,12 @@ async def main():
         # --- 最終合否決定 ---
         step = step_title("書類選考・最終判定")
         # シンプルなロジック例：empaiが合格でsimhrが賛成→合格、それ以外は不合格
-        if empai_judgement["decision"] == "合格" and simhr_opinion["opinion"] == "賛成":
+        if empai_judgement["decision"] == "合格" and simhr_opinion["stance"] == "agree":
             final_result = "合格"
-            final_reason = f"empai・simhrともに合格判断。理由: {empai_judgement['reason']} / {simhr_opinion['comment']}"
+            final_reason = f"empai・simhrともに合格判断。理由: {empai_judgement['reason']} / {simhr_opinion['reason']}"
         else:
             final_result = "不合格"
-            final_reason = f"empaiまたはsimhrが不合格・反対判断。理由: {empai_judgement['reason']} / {simhr_opinion['comment']}"
+            final_reason = f"empaiまたはsimhrが不合格・反対判断。理由: {empai_judgement['reason']} / {simhr_opinion['reason']}"
         print(f"\n【書類選考・最終判定】{final_result}\n{final_reason}")
         log_json(step, {"result": final_result, "reason": final_reason})
         log_md(step, f"合否: {final_result}\n理由: {final_reason}")
@@ -583,6 +978,7 @@ async def main():
         # 不合格の場合は終了
         if final_result == "不合格":
             print("書類選考で不合格のため、シミュレーションを終了します。")
+            update_realtime_html(is_completed=True)  # 完了状態に更新
             generate_html_file()  # HTML生成
             return
         
@@ -591,7 +987,9 @@ async def main():
 
         # --- 面接プロセス多段階化 ---
         interview_stages = ["一次面接", "二次面接", "最終面接"]
-        for stage in interview_stages:
+        interview_results = []  # 各面接の結果を保存
+        
+        for i, stage in enumerate(interview_stages):
             print(f"\n【{stage}】")
             question = await interviewer.generate_question(job_list[0], stage=stage, seeker_profile=seeker_profile, resume=resume)
             print("【面接質問】")
@@ -607,36 +1005,174 @@ async def main():
             log_md(step_title(f"{stage} 回答"), answer)
             log_html(step_title(f"{stage} 回答"), answer)
 
-            evaluation = await interviewer.evaluate_answer(answer)
-            print("【面接官の評価】")
-            print(evaluation)
-            # 合否判定ロジック（例：評価コメントに"高い"や"合格"があれば合格、それ以外は不合格）
-            if any(ng in evaluation for ng in ["不合格", "見送り", "reject"]):
-                judge = "不合格"
-            else:
-                judge = "合格"
-            print(f"【{stage}判定】{judge}")
-            log_json(step_title(f"{stage} 判定"), judge)
-            log_md(step_title(f"{stage} 判定"), judge)
-            log_html(step_title(f"{stage} 判定"), judge)
-            log_json(step_title(f"{stage} 評価"), evaluation)
-            log_md(step_title(f"{stage} 評価"), evaluation)
-            log_html(step_title(f"{stage} 評価"), evaluation)
-            if judge == "不合格":
-                print(f"{stage}で不合格のため終了します。")
+            # 面接結果を記録（評価は振り返り会議で行う）
+            interview_results.append({
+                "stage": stage,
+                "question": question,
+                "answer": answer
+            })
+            
+            # --- 企業側振り返り会議（会話形式） ---
+            step = step_title(f"{stage}後・企業側振り返り会議")
+            
+            # 振り返り会議を会話形式で生成
+            reflection_prompt = f"""
+あなたは企業の採用チームの振り返り会議をシミュレートしてください。{stage}が終了し、3人の担当者が議論します。
+
+【面接情報】
+- 段階: {stage}
+- 面接質問: {question}
+- 求職者回答: {answer}
+
+【参加者】
+- 👨‍💼 HR（佐藤）: 採用全体を俯瞰し、会社のニーズとマッチするかを判断する人事担当
+- 👩‍💻 面接官（田中）: 技術面・人物面での直接評価を提供する現場マネージャー  
+- 🤖 empai: データ分析的観点から客観的判断を提供するAI採用支援システム
+
+【これまでの選考経過】
+- 書類選考: 合格
+- 今回の面接: {stage}
+
+次の段階は「{"オファー検討" if i == len(interview_stages)-1 else interview_stages[i+1]}」です。
+
+実際の会議のように、3者が自然に議論し、最終的に次のステップの判定（進む/見送り）を決定してください。
+会話は以下の形式で：
+
+👨‍💼 HR（佐藤）: [発言内容]
+👩‍💻 面接官（田中）: [発言内容]
+🤖 empai: [発言内容]
+👨‍💼 HR（佐藤）: [発言内容]
+...
+
+最後に明確な結論を示してください。
+
+出力は必ず日本語のみで行ってください。
+"""
+            
+            reflection_result = await seeker_agent.llm.generate_content_async(
+                reflection_prompt,
+                agent_name=f"{stage}後振り返り会議",
+                progress_callback=update_progress
+            )
+            
+            print(f"\n【{stage}後・企業側振り返り会議】")
+            print(reflection_result)
+            log_json(step, reflection_result)
+            log_md(step, reflection_result)
+            log_html(step, reflection_result)
+            
+            # 企業側判定結果を抽出
+            if any(keyword in reflection_result for keyword in ["見送り", "不合格", "次に進まない", "お断り", "辞退"]):
+                company_decision = "見送り"
+                print(f"\n【{stage}・企業判定】見送り")
+                print(f"{stage}で企業側が見送りのため、選考を終了します。")
+                log_json(step_title(f"{stage} 企業判定"), {"result": "見送り", "reason": "企業側振り返り会議での判断"})
+                log_md(step_title(f"{stage} 企業判定"), "見送り")
+                log_html(step_title(f"{stage} 企業判定"), "見送り")
+                update_realtime_html(is_completed=True)  # 完了状態に更新
                 generate_html_file()  # HTML生成
                 return
+            else:
+                company_decision = "進む"
+                next_step = interview_stages[i+1] if i < len(interview_stages)-1 else "オファー段階"
+                print(f"\n【{stage}・企業判定】{next_step}に進む")
+                log_json(step_title(f"{stage} 企業判定"), {"result": company_decision, "next_step": next_step})
+                log_md(step_title(f"{stage} 企業判定"), f"{next_step}に進む")
+                log_html(step_title(f"{stage} 企業判定"), f"{next_step}に進む")
+            
+            # --- 求職者側振り返り会議（新機能） ---
+            step = step_title(f"{stage}後・求職者側振り返り会議")
+            
+            # 求職者側振り返り会議を会話形式で生成
+            seeker_reflection_prompt = f"""
+あなたは転職活動中の求職者とその転職エージェントの振り返り会議をシミュレートしてください。{stage}が終了し、2人で面接の印象を議論します。
+
+【面接情報】
+- 段階: {stage}
+- 面接質問: {question}
+- 求職者回答: {answer}
+- 企業側判定: {company_decision}
+
+【参加者】
+- 👤 seeker（山田太郎）: 求職者本人の感情、印象、不安、直感を表現
+- 🎯 seekerAI（転職エージェント）: 客観的アドバイス、キャリア視点、市場分析を提供
+
+【検討ポイント】
+- 面接体験（面接官の対応、質問の質、雰囲気）
+- 企業文化（価値観の一致、働き方、チームの印象）  
+- キャリア影響（成長機会、スキル向上、将来性）
+- 直感・感情（なんとなくの印象、違和感、ワクワク感）
+
+実際の面接後の会話のように、求職者の率直な感想と転職エージェントのアドバイスを自然に表現してください。
+最終的に「継続したい/条件付き継続/辞退したい」のいずれかの判定を示してください。
+
+会話は以下の形式で：
+
+👤 seeker: [発言内容]
+🎯 seekerAI: [発言内容]
+👤 seeker: [発言内容]
+🎯 seekerAI: [発言内容]
+...
+
+最後に明確な継続意思を示してください。
+
+出力は必ず日本語のみで行ってください。
+"""
+            
+            seeker_reflection_result = await seeker_agent.llm.generate_content_async(
+                seeker_reflection_prompt,
+                agent_name=f"{stage}後求職者振り返り",
+                progress_callback=update_progress
+            )
+            
+            print(f"\n【{stage}後・求職者側振り返り会議】")
+            print(seeker_reflection_result)
+            log_json(step, seeker_reflection_result)
+            log_md(step, seeker_reflection_result)
+            log_html(step, seeker_reflection_result)
+            
+            # 求職者側判定結果を抽出
+            if any(keyword in seeker_reflection_result for keyword in ["辞退したい", "やめたい", "合わない", "継続しない"]):
+                seeker_decision = "辞退"
+                print(f"\n【{stage}・求職者判定】辞退")
+                print(f"{stage}で求職者が辞退のため、選考を終了します。")
+                log_json(step_title(f"{stage} 求職者判定"), {"result": "辞退", "reason": "求職者側振り返り会議での判断"})
+                log_md(step_title(f"{stage} 求職者判定"), "辞退")
+                log_html(step_title(f"{stage} 求職者判定"), "辞退")
+                update_realtime_html(is_completed=True)  # 完了状態に更新
+                generate_html_file()  # HTML生成
+                return
+            else:
+                seeker_decision = "継続"
+                print(f"\n【{stage}・求職者判定】継続")
+                log_json(step_title(f"{stage} 求職者判定"), {"result": seeker_decision})
+                log_md(step_title(f"{stage} 求職者判定"), "継続")
+                log_html(step_title(f"{stage} 求職者判定"), "継続")
+            
+            # --- 最終判定（企業・求職者両方の意思確認） ---
+            print(f"\n【{stage}・最終判定】企業:{company_decision} × 求職者:{seeker_decision}")
+            if company_decision == "進む" and seeker_decision == "継続":
+                if i < len(interview_stages)-1:
+                    print(f"{next_step}に進みます。")
+                else:
+                    print("全面接を通過しました。オファー段階に進みます。")
+            
+            log_json(step_title(f"{stage} 最終判定"), {
+                "company_decision": company_decision, 
+                "seeker_decision": seeker_decision,
+                "result": f"{next_step}に進む" if i < len(interview_stages)-1 else "オファー段階に進む"
+            })
+            log_md(step_title(f"{stage} 最終判定"), f"企業:{company_decision} × 求職者:{seeker_decision}")
+            log_html(step_title(f"{stage} 最終判定"), f"企業:{company_decision} × 求職者:{seeker_decision}")
 
         # --- オファー交渉ステップ ---
         # 面接評価リストを作成
         interview_evaluations = []
-        for stage in interview_stages:
-            for item in logs:
-                if item.get("step", "").endswith(f"{stage} 評価"):
-                    interview_evaluations.append(item["content"])
+        for result in interview_results:
+            interview_evaluations.append(result["answer"])
         
         # 面接評価と求職者プロフィールに基づく動的オファー生成
-        offer = await employer_agent.generate_initial_offer(
+        offer = employer_agent.generate_initial_offer(
             seeker_profile=seeker_profile,
             job=job_list[0],
             interview_evaluations=interview_evaluations
@@ -684,6 +1220,23 @@ async def main():
         # 会話と決断を表示
         print("\n【オファー受諾判断の会話】")
         print(offer_decision_result["conversation"])
+        
+        # 迷いの詳細情報を表示
+        hesitation_score = offer_decision_result.get("hesitation_score", 0)
+        hesitation_factors = offer_decision_result.get("hesitation_factors", [])
+        decision_confidence = offer_decision_result.get("decision_confidence", 0)
+        
+        print(f"\n【迷いの分析】")
+        print(f"迷いスコア: {hesitation_score}")
+        if hesitation_factors:
+            print("迷いの要因:")
+            for factor in hesitation_factors:
+                print(f"  - {factor}")
+        
+        confidence_labels = ["推測判断", "傾向判断", "明確な表現", "明示的決断"]
+        confidence_text = confidence_labels[min(decision_confidence, 3)]
+        print(f"決断の信頼度: {confidence_text}")
+        
         log_json(step, offer_decision_result)
         log_md(step, offer_decision_result["conversation"])
         log_html(step, offer_decision_result["conversation"])
@@ -691,19 +1244,21 @@ async def main():
         # 最終決断のみ分けて表示
         final_decision = "受諾" if offer_decision_result["decision"] else "辞退"
         print(f"\n【最終決断】{final_decision}")
-        log_json(step_title("最終決断"), final_decision)
+        log_json(step_title("最終決断"), {"decision": final_decision, "confidence": confidence_text, "score": hesitation_score})
         log_md(step_title("最終決断"), final_decision)
         log_html(step_title("最終決断"), final_decision)
     else:
         print("求人の話を聞きたい意思が示されなかったため、シミュレーションを終了します。")
+        update_realtime_html(is_completed=True)  # 完了状態に更新
         generate_html_file()  # HTML生成
         return
-        
+
     # シミュレーション完了後、examples/logsにサンプルログをコピー
     print("\n【シミュレーション完了】")
     print(f"ログは logs/simulation_log_{now_str}.md と logs/simulation_log_{now_str}.jsonl に保存されました")
     
     # HTML生成
+    update_realtime_html(is_completed=True)  # 完了状態に更新
     generate_html_file()
     print(f"HTML形式のログも logs/simulation_log_{now_str}.html に保存されました")
     

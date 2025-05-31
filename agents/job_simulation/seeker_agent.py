@@ -8,7 +8,7 @@ class SeekerAgent(BaseAgent):
         with open("prompts/seeker_offer_decision.txt", encoding="utf-8") as f:
             self.offer_decision_prompt_template = f.read().strip()
 
-    async def evaluate_jobs(self, seeker_profile: dict, job_list: list) -> dict:
+    async def evaluate_jobs(self, seeker_profile: dict, job_list: list, progress_callback=None) -> dict:
         # 新しい構造に対応したスコアリング例
         best_job = job_list[0]
         best_score = 0
@@ -28,7 +28,7 @@ class SeekerAgent(BaseAgent):
                 best_job = job
         # Qwen3で志望理由を生成（contextやvaluesも含めて渡す）
         prompt = self.reason_prompt_template.format(seeker_profile=seeker_profile, best_job=best_job)
-        reason = await self.llm.generate_content_async(prompt)
+        reason = await self.llm.generate_content_async(prompt, agent_name="SeekerAgent（求職者AI）", progress_callback=progress_callback)
         return {
             "seeker_id": seeker_profile["id"],
             "application_decision": {
@@ -45,7 +45,7 @@ class SeekerAgent(BaseAgent):
             offer=offer,
             interview_log=interview_log
         )
-        decision = await self.llm.generate_content_async(prompt)
+        decision = await self.llm.generate_content_async(prompt, agent_name="SeekerAgent（求職者AI）")
         status = "accept" if "accept" in decision or "受諾" in decision else "reject"
         return {
             "final_decision": {"status": status, "reason": decision}
@@ -79,25 +79,29 @@ class SeekerAgent(BaseAgent):
         summary = f"{name}は{company}で{current}として活躍し、{skills}などのスキルを活かしてきました。{values}を大切にし、現場の課題解決やチームでの協働に強みがあります。新しい環境でも自律的に挑戦し、社会に貢献したいと考えています。"
         return summary
 
-    async def request_offer_change(self, offer: dict) -> str:
+    async def request_offer_change(self, offer: dict, progress_callback=None) -> str:
         with open("prompts/offer_negotiation_seeker.txt", encoding="utf-8") as f:
             prompt_template = f.read().strip()
         prompt = prompt_template.format(offer=offer)
-        request = await self.llm.generate_content_async(prompt)
+        request = await self.llm.generate_content_async(
+            prompt, 
+            agent_name="SeekerAgent（求職者AI）",
+            progress_callback=progress_callback
+        )
         return request.strip()
 
     async def propose_job(self, self_intro: str, job_list: list) -> str:
         with open("prompts/seekeragent_job_proposal.txt", encoding="utf-8") as f:
             prompt_template = f.read().strip()
         prompt = prompt_template.format(self_intro=self_intro, job_list=job_list)
-        proposal = await self.llm.generate_content_async(prompt)
+        proposal = await self.llm.generate_content_async(prompt, agent_name="SeekerAgent（求職者AI）")
         return proposal.strip()
 
     async def explain_job_detail(self, job_proposal: str, job_question: str) -> str:
         with open("prompts/seekeragent_job_detail.txt", encoding="utf-8") as f:
             prompt_template = f.read().strip()
         prompt = prompt_template.format(job_proposal=job_proposal, job_question=job_question)
-        detail = await self.llm.generate_content_async(prompt)
+        detail = await self.llm.generate_content_async(prompt, agent_name="SeekerAgent（求職者AI）")
         return detail.strip()
 
     async def respond_to_life_topic(self, seeker_profile: dict, history: list) -> str:
@@ -106,19 +110,27 @@ class SeekerAgent(BaseAgent):
         # 履歴を文字列化してプロンプトに含める
         history_str = "\n".join([f"{m['role']}: {m['content']}" for m in history])
         prompt = prompt_template + f"\n\n【会話履歴】\n{history_str}\n\n【山田さんのプロフィール要約】\n{seeker_profile['context']}"
-        response = await self.llm.generate_content_async(prompt)
+        response = await self.llm.generate_content_async(prompt, agent_name="SeekerAgent（求職者AI）")
         return response.strip()
 
-    async def propose_job_summary(self, job: dict) -> str:
+    async def propose_job_summary(self, job: dict, progress_callback=None) -> str:
+        """求人概要の提示"""
         with open("prompts/seekeragent_job_summary.txt", encoding="utf-8") as f:
             prompt_template = f.read().strip()
         prompt = prompt_template.format(job=job)
-        summary = await self.llm.generate_content_async(prompt)
-        return summary.strip()
+        return await self.llm.generate_content_async(
+            prompt, 
+            agent_name="SeekerAgent（求職者AI）",
+            progress_callback=progress_callback
+        )
 
-    async def propose_job_pitch(self, seeker_profile: dict, job: dict) -> str:
+    async def propose_job_pitch(self, seeker_profile: dict, job: dict, progress_callback=None) -> str:
+        """この求職者にとっての求人の魅力をプレゼン"""
         with open("prompts/seekeragent_job_pitch.txt", encoding="utf-8") as f:
             prompt_template = f.read().strip()
         prompt = prompt_template.format(seeker_profile=seeker_profile, job=job)
-        pitch = await self.llm.generate_content_async(prompt)
-        return pitch.strip() 
+        return await self.llm.generate_content_async(
+            prompt, 
+            agent_name="SeekerAgent（求職者AI）",
+            progress_callback=progress_callback
+        ) 

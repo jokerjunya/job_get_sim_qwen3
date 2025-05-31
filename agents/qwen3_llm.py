@@ -7,29 +7,72 @@ class Qwen3Llm:
         self.model = model
         self.api_url = api_url
 
-    async def generate_content_async(self, prompt, **kwargs):
+    async def generate_content_async(self, prompt, agent_name=None, show_progress=True, progress_callback=None, **kwargs):
         import asyncio
+        
         def sync_request():
+            # 日本語応答を強制するプロンプト指示を追加
+            enhanced_prompt = f"{prompt}\n\n※必ず日本語で回答してください。英語や中国語は使用しないでください。"
+            
+            # 進捗表示開始
+            if show_progress and agent_name:
+                print(f"🤖 {agent_name}が回答を生成中", end="", flush=True)
+                if progress_callback:
+                    progress_callback(f"🤖 {agent_name}が回答を生成中")
+            elif show_progress:
+                print("🤖 AI回答を生成中", end="", flush=True)
+                if progress_callback:
+                    progress_callback("🤖 AI回答を生成中")
+            
             response = requests.post(
                 self.api_url,
                 json={
                     "model": self.model.split("/")[-1],
-                    "prompt": prompt,
-                    "options": kwargs
+                    "prompt": enhanced_prompt,
+                    "stream": True,
+                    **kwargs
                 },
                 stream=True
             )
-            result = ""
-            for line in response.iter_lines():
-                if line:
-                    try:
-                        decoded = line.decode('utf-8')
-                        data = json.loads(decoded)
-                        if "response" in data and data["response"]:
-                            result += data["response"]
-                    except Exception:
-                        continue
-            # <think> ... </think> を除去
-            result = re.sub(r'<think>.*?</think>', '', result, flags=re.DOTALL)
-            return result.strip()
-        return await asyncio.to_thread(sync_request) 
+            
+            full_response = ""
+            dot_count = 0
+            
+            try:
+                for line in response.iter_lines():
+                    if line:
+                        try:
+                            chunk = json.loads(line.decode('utf-8'))
+                            if 'response' in chunk:
+                                full_response += chunk['response']
+                                
+                                # 進捗表示（ドット追加）
+                                if show_progress:
+                                    dot_count += 1
+                                    if dot_count % 10 == 0:  # 10チャンクごとにドットを表示
+                                        print(".", end="", flush=True)
+                                
+                                if chunk.get('done', False):
+                                    break
+                        except json.JSONDecodeError:
+                            continue
+            finally:
+                # 完了メッセージ
+                if show_progress:
+                    print(" ✅完了", flush=True)
+                    if progress_callback:
+                        progress_callback("")  # 進捗表示をクリア
+            
+            # thinking部分を除去
+            full_response = re.sub(r'<think>.*?</think>', '', full_response, flags=re.DOTALL)
+            
+            # 追加の不要な英語・中国語パターンを除去
+            full_response = re.sub(r'Okay.*?\.', '', full_response, flags=re.DOTALL)
+            full_response = re.sub(r'好的.*?。', '', full_response, flags=re.DOTALL)
+            full_response = re.sub(r'Wait.*?\.', '', full_response, flags=re.DOTALL)
+            full_response = re.sub(r'Let me.*?\.', '', full_response, flags=re.DOTALL)
+            
+            return full_response.strip()
+        
+        # 非同期実行
+        return await asyncio.get_event_loop().run_in_executor(None, sync_request) 

@@ -1,6 +1,7 @@
 from agents.base_agent import BaseAgent
 import random
 import json
+import re
 
 class SimulatedSeeker(BaseAgent):
     def __init__(self, name: str = "SimulatedSeeker", description: str = "求職者の人格・感情を再現するエージェント"):
@@ -13,7 +14,7 @@ class SimulatedSeeker(BaseAgent):
     async def generate_motivation(self, job: dict) -> str:
         # 志望動機をQwen3で生成
         prompt = self.motivation_prompt_template.format(job_title=job['title'], company=job['company'])
-        return await self.llm.generate_content_async(prompt)
+        return await self.llm.generate_content_async(prompt, agent_name="SimulatedSeeker（求職者）")
 
     async def answer_interview(self, question: str, seeker_profile: dict = None) -> str:
         # 面接質問への応答をQwen3で生成
@@ -43,11 +44,11 @@ class SimulatedSeeker(BaseAgent):
             
         prompt = self.answer_interview_prompt_template.format(
             question=question,
-            seeker_info=seeker_info
+            seeker_profile=seeker_info
         )
-        return await self.llm.generate_content_async(prompt)
+        return await self.llm.generate_content_async(prompt, agent_name="SimulatedSeeker（求職者）")
 
-    async def decide_offer(self, offer: dict, seeker_profile: dict = None, job: dict = None, interview_evaluations: list = None) -> bool:
+    async def decide_offer(self, offer: dict, seeker_profile: dict = None, job: dict = None, interview_evaluations: list = None) -> dict:
         """
         オファー受諾判断を対話形式で行う。
         「問い × 間 × 例」のフレームワークを使って、納得感のある意思決定プロセスを表現する。
@@ -59,40 +60,78 @@ class SimulatedSeeker(BaseAgent):
             interview_evaluations: 面接評価のリスト
             
         Returns:
-            bool: Trueなら受諾、Falseなら辞退
+            dict: 決断結果と会話内容
         """
         with open("prompts/seeker_offer_conversation.txt", encoding="utf-8") as f:
             prompt_template = f.read().strip()
         
-        # 迷いスコアの計算
+        # 迷いスコアの計算（より現実的で多角的に）
         hesitation_score = 0
+        hesitation_factors = []  # 迷いの要因を記録
+        
         if seeker_profile:
-            # 希望年収と実際のオファー年収の差
+            # 1. 年収面での考慮（より細かく）
             hope_salary = seeker_profile.get("hope_conditions", {}).get("min_salary", 0)
             offer_salary = offer.get("年収", 0)
             if hope_salary > 0 and offer_salary > 0:
-                salary_gap = (hope_salary - offer_salary) / hope_salary  # 相対的な差
+                salary_gap = (hope_salary - offer_salary) / hope_salary
                 if salary_gap > 0.2:  # 希望より20%以上低い
+                    hesitation_score += 3
+                    hesitation_factors.append("年収が期待より大幅に低い")
+                elif salary_gap > 0.1:  # 希望より10%以上低い
                     hesitation_score += 2
+                    hesitation_factors.append("年収が期待より低い")
                 elif salary_gap > 0:  # 少しでも低い
                     hesitation_score += 1
+                    hesitation_factors.append("年収が期待をわずかに下回る")
+                elif salary_gap <= -0.2:  # 希望より20%以上高い（逆に不安になる）
+                    hesitation_score += 1
+                    hesitation_factors.append("年収が高すぎて責任への不安")
             
-            # 価値観との一致度
+            # 2. キャリア成長への不安（現職歴から推測）
+            current_job = seeker_profile.get("current_job", {})
+            current_period = current_job.get("period", "")
+            if "現在" in current_period or "2024" in current_period:
+                # 現職歴が短い（1-2年）場合は転職への不安
+                hesitation_score += 1
+                hesitation_factors.append("現職歴が短く転職への不安")
+            
+            # 3. ワークライフバランスへの懸念
+            if "家族" in seeker_profile.get("context", "") or "子ども" in seeker_profile.get("context", ""):
+                hesitation_score += 1
+                hesitation_factors.append("家族との時間への配慮")
+            
+            # 4. 価値観の一致度（逆に一致しすぎても不安になる要因）
             if job and "culture_keywords" in job:
-                values_match = sum(1 for v in seeker_profile.get("values", []) if v in job["culture_keywords"])
+                seeker_values = seeker_profile.get("values", [])
+                job_culture = job["culture_keywords"]
+                values_match = sum(1 for v in seeker_values if v in job_culture)
                 if values_match == 0:
-                    hesitation_score += 1
+                    hesitation_score += 2
+                    hesitation_factors.append("価値観の不一致")
+                elif values_match == len(seeker_values):  # 100%一致は逆に不安
+                    hesitation_score += 0.5
+                    hesitation_factors.append("価値観が一致しすぎることへの若干の不安")
                 
-            # 面接の印象
+            # 5. 面接での印象や不安要素
             if interview_evaluations:
-                negative_count = sum(1 for eval in interview_evaluations if "不合格" in eval or "見送り" in eval)
-                if negative_count > 0:
-                    hesitation_score += 1
+                for eval in interview_evaluations:
+                    if "課題" in eval or "改善" in eval:
+                        hesitation_score += 0.5
+                        hesitation_factors.append("面接で指摘された課題への不安")
+            
+            # 6. 新しい環境への適応不安（転職共通の不安）
+            hesitation_score += 1
+            hesitation_factors.append("新しい環境への適応への不安")
+            
+            # 7. 現職への愛着・義理（必ず発生する要因）
+            hesitation_score += 1
+            hesitation_factors.append("現職への愛着や同僚・会社への義理")
         
-        # 迷いの度合いに応じたターン数の決定
-        if hesitation_score >= 3:
+        # 迷いの度合いに応じたターン数の決定（調整）
+        if hesitation_score >= 4:
             turns = "many"  # 多数のターン（5回以上）
-        elif hesitation_score >= 1:
+        elif hesitation_score >= 2:
             turns = "some"  # 適度なターン（3-4回）
         else:
             turns = "few"   # 少数のターン（1-2回）
@@ -106,79 +145,114 @@ class SimulatedSeeker(BaseAgent):
             turns=turns
         )
         
-        conversation = await self.llm.generate_content_async(prompt)
+        conversation = await self.llm.generate_content_async(prompt, agent_name="SimulatedSeeker（求職者）")
         
-        # 会話から最終判断を抽出
-        decision_text = conversation.strip().lower()
-        # 最後のseekerとseekerAIの発言をチェック
-        final_lines = [line.strip().lower() for line in conversation.strip().split('\n') if line.strip()]
-        # 最後の発言が「受諾」または「辞退」を明示的に含むかチェック
-        final_statements = []
-        for line in final_lines[-5:]:  # 最後の5行程度をチェック
-            if "受諾" in line or "accept" in line or "受け入れ" in line or "決めました" in line:
-                final_statements.append("accept")
-            elif "辞退" in line or "reject" in line or "見送" in line:
-                final_statements.append("reject")
-                
-        # 最終判断の決定（デフォルトは会話全体から判断）
-        final_decision = True  # デフォルトは受諾
-        if final_statements:
-            # 明示的な表明があれば最後の表明を採用
-            final_decision = final_statements[-1] == "accept"
-        else:
-            # 明示的な表明がなければ会話全体から判断
-            final_decision = "受諾" in decision_text or "accept" in decision_text or "受け入れ" in decision_text
-            if "辞退" in decision_text or "reject" in decision_text or "見送" in decision_text:
+        # より精密な決断抽出ロジック
+        conversation_lines = conversation.strip().split('\n')
+        final_decision = None
+        decision_confidence = 0
+        
+        # 明示的な決断表現を探す（優先度高）
+        accept_patterns = [
+            r'受諾します', r'受け入れます', r'挑戦.*します', r'お受けします',
+            r'受諾.*決めました', r'受けること.*決めました', r'やってみます'
+        ]
+        reject_patterns = [
+            r'辞退します', r'見送.*します', r'お断りします', r'辞退.*決めました',
+            r'見送.*決めました', r'今回.*見送', r'残る.*決めました'
+        ]
+        
+        # 最後の5行を重点的にチェック
+        for line in reversed(conversation_lines[-5:]):
+            line_lower = line.lower().strip()
+            
+            # 受諾の明示的表現
+            for pattern in accept_patterns:
+                if re.search(pattern, line):
+                    final_decision = True
+                    decision_confidence = 3
+                    break
+            
+            # 辞退の明示的表現  
+            for pattern in reject_patterns:
+                if re.search(pattern, line):
+                    final_decision = False
+                    decision_confidence = 3
+                    break
+                    
+            if decision_confidence == 3:  # 明確な決断が見つかった
+                break
+        
+        # 明示的な表現が見つからない場合、全体的なトーンから判断
+        if decision_confidence < 3:
+            conversation_text = conversation.lower()
+            accept_words = conversation_text.count('受諾') + conversation_text.count('受け入れ') + conversation_text.count('挑戦')
+            reject_words = conversation_text.count('辞退') + conversation_text.count('見送') + conversation_text.count('残る')
+            
+            if accept_words > reject_words:
+                final_decision = True
+                decision_confidence = 1
+            elif reject_words > accept_words:
                 final_decision = False
+                decision_confidence = 1
+            else:
+                # デフォルトは受諾（迷いが少ない場合）
+                final_decision = True if hesitation_score < 3 else False
+                decision_confidence = 0
         
-        # 最終判断を確認（ログ表示）
-        print(f"決断抽出: {'受諾' if final_decision else '辞退'}")
+        # デバッグ情報の出力
+        decision_text = "受諾" if final_decision else "辞退"
+        confidence_text = ["推測", "傾向判断", "明確な表現", "明示的決断"][min(decision_confidence, 3)]
+        print(f"決断抽出: {decision_text} (信頼度: {confidence_text}, スコア: {hesitation_score})")
         
         return {
             "decision": final_decision,
-            "conversation": conversation.strip()
+            "conversation": conversation.strip(),
+            "hesitation_score": hesitation_score,
+            "hesitation_factors": hesitation_factors,
+            "decision_confidence": decision_confidence
         }
 
     async def self_introduction(self) -> str:
         with open("prompts/seeker_self_introduction.txt", encoding="utf-8") as f:
             prompt_template = f.read().strip()
         prompt = prompt_template
-        intro = await self.llm.generate_content_async(prompt)
+        intro = await self.llm.generate_content_async(prompt, agent_name="SimulatedSeeker（求職者）")
         return intro.strip()
 
     async def job_question(self, job_proposal: str) -> str:
         with open("prompts/seeker_job_question.txt", encoding="utf-8") as f:
             prompt_template = f.read().strip()
         prompt = prompt_template.format(job_proposal=job_proposal)
-        question = await self.llm.generate_content_async(prompt)
+        question = await self.llm.generate_content_async(prompt, agent_name="SimulatedSeeker（求職者）")
         return question.strip()
 
     async def job_final_decision(self, job_proposal: str) -> str:
         with open("prompts/seeker_job_final_decision.txt", encoding="utf-8") as f:
             prompt_template = f.read().strip()
         prompt = prompt_template.format(job_proposal=job_proposal)
-        decision = await self.llm.generate_content_async(prompt)
+        decision = await self.llm.generate_content_async(prompt, agent_name="SimulatedSeeker（求職者）")
         return decision.strip()
 
     async def start_conversation(self, seeker_profile: dict) -> str:
         with open("prompts/seeker_life_topic.txt", encoding="utf-8") as f:
             prompt_template = f.read().strip()
         prompt = prompt_template.format(seeker_profile=seeker_profile)
-        conversation = await self.llm.generate_content_async(prompt)
+        conversation = await self.llm.generate_content_async(prompt, agent_name="SimulatedSeeker（求職者）")
         return conversation.strip()
 
     async def reply_in_conversation(self, history: str) -> str:
         with open("prompts/seeker_reply.txt", encoding="utf-8") as f:
             prompt_template = f.read().strip()
         prompt = prompt_template.format(history=history)
-        reply = await self.llm.generate_content_async(prompt)
+        reply = await self.llm.generate_content_async(prompt, agent_name="SimulatedSeeker（求職者）")
         return reply.strip()
 
     async def job_intent(self, job_pitch: str) -> str:
         with open("prompts/seeker_job_intent.txt", encoding="utf-8") as f:
             prompt_template = f.read().strip()
         prompt = prompt_template.format(job_pitch=job_pitch)
-        intent = await self.llm.generate_content_async(prompt)
+        intent = await self.llm.generate_content_async(prompt, agent_name="SimulatedSeeker（求職者）")
         return intent.strip()
 
     async def application_reason(self, seeker_profile: dict, job: dict) -> str:
@@ -218,5 +292,5 @@ class SimulatedSeeker(BaseAgent):
             job_persona=job_persona,
             push_point=push_point
         )
-        reason = await self.llm.generate_content_async(prompt)
+        reason = await self.llm.generate_content_async(prompt, agent_name="SimulatedSeeker（求職者）")
         return reason.strip() 

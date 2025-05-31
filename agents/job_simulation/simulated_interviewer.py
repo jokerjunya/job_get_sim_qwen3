@@ -1,7 +1,7 @@
 from agents.base_agent import BaseAgent
 
 class SimulatedInterviewer(BaseAgent):
-    def __init__(self, name: str = "SimulatedInterviewer", description: str = "面接官の役割を担うエージェント"):
+    def __init__(self, name: str = "SimulatedInterviewer", description: str = "面接官をシミュレートするエージェント"):
         super().__init__(name, description)
         with open("prompts/interviewer_evaluate.txt", encoding="utf-8") as f:
             self.evaluate_prompt_template = f.read().strip()
@@ -38,9 +38,9 @@ class SimulatedInterviewer(BaseAgent):
             seeker_info=seeker_info,
             resume=resume_info
         )
-        return await self.llm.generate_content_async(prompt)
+        return await self.llm.generate_content_async(prompt, agent_name="SimulatedInterviewer（面接官AI）")
 
     async def evaluate_answer(self, answer: str) -> str:
         # 求職者の回答をQwen3で評価
         prompt = self.evaluate_prompt_template.format(answer=answer)
-        return await self.llm.generate_content_async(prompt) 
+        return await self.llm.generate_content_async(prompt, agent_name="SimulatedInterviewer（面接官AI）") 

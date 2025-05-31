@@ -2,484 +2,333 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>転職AIエージェント ログUI</title>
+  <title>転職AIエージェント リアルタイムログ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="3">
   <style>
     body {
-      font-family: 'Helvetica Neue', 'Arial', sans-serif;
-      background-color: #f5f7fa;
+      font-family: 'Helvetica Neue', 'Arial', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0;
       padding: 2em;
-      line-height: 1.6;
-      color: #333;
-      max-width: 1200px;
+      min-height: 100vh;
+      color: white;
+    }
+    .container {
+      max-width: 800px;
       margin: 0 auto;
     }
-    h1 {
-      color: #2c3e50;
+    .header {
       text-align: center;
-      margin-bottom: 1.5em;
-      border-bottom: 2px solid #3498db;
-      padding-bottom: 0.5em;
+      margin-bottom: 2em;
     }
-    h2 {
-      color: #2c3e50;
-      border-left: 6px solid #3498db;
-      padding-left: 0.8em;
-      margin-top: 2em;
-      font-size: 1.5em;
-      background-color: #f8f9fa;
-      padding: 0.5em;
-      border-radius: 0 5px 5px 0;
-    }
-    .chat-container {
-      display: flex;
-      flex-direction: column;
-      gap: 1em;
-      margin: 1.5em 0;
-    }
-    .chat-bubble {
-      max-width: 70%;
-      padding: 1em 1.5em;
-      border-radius: 18px;
-      line-height: 1.5;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      position: relative;
-      margin: 0.5em 0;
-    }
-    .hr {
-      background: #e1f0ff;
-      align-self: flex-start;
-      border-bottom-left-radius: 5px;
-    }
-    .agent {
-      background: #e9ffe1;
-      align-self: flex-end;
-      border-bottom-right-radius: 5px;
-    }
-    .sender {
-      font-weight: bold;
+    h1 {
+      font-size: 2.5em;
       margin-bottom: 0.5em;
-      color: #2c3e50;
+      font-weight: 300;
     }
-    ul {
-      padding-left: 1.5em;
-      margin: 0.5em 0;
+    .subtitle {
+      font-size: 1.2em;
+      opacity: 0.9;
     }
-    li {
-      margin-bottom: 0.5em;
-    }
-    hr {
+    .progress-container {
+      background: rgba(255,255,255,0.1);
+      border-radius: 15px;
+      padding: 2em;
       margin: 2em 0;
-      border: none;
-      border-top: 1px solid #eaeaea;
+      backdrop-filter: blur(10px);
     }
-    .card {
-      background: white;
+    .progress-bar {
+      background: rgba(255,255,255,0.2);
       border-radius: 10px;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-      padding: 1.5em;
-      margin: 1.5em 0;
-      border-left: 5px solid #3498db;
-    }
-    .job-posting {
-      border-left-color: #3498db;
-    }
-    .resume {
-      border-left-color: #2ecc71;
-    }
-    .card h3 {
-      margin-top: 0;
-      color: #2c3e50;
-      border-bottom: 1px solid #eaeaea;
-      padding-bottom: 0.5em;
-    }
-    p {
-      margin: 0.8em 0;
-    }
-    strong {
-      color: #2c3e50;
-    }
-    .interview-qa {
-      background-color: #f9f9f9;
-      border-radius: 8px;
-      padding: 1em;
+      height: 8px;
       margin: 1em 0;
-      border-left: 4px solid #f39c12;
+      overflow: hidden;
     }
-    .result-box {
-      background-color: #f8f9fa;
-      border-radius: 8px;
-      padding: 1em;
+    .progress-fill {
+      background: linear-gradient(90deg, #00ff88, #00ccff);
+      height: 100%;
+      border-radius: 10px;
+      transition: width 0.5s ease;
+    }
+    .current-step {
+      font-size: 1.3em;
+      font-weight: 500;
       margin: 1em 0;
-      border-left: 4px solid #9b59b6;
-      font-weight: bold;
+      padding: 1em;
+      background: rgba(255,255,255,0.15);
+      border-radius: 10px;
+      border-left: 4px solid #00ff88;
     }
-    .positive-result {
-      border-left-color: #2ecc71;
+    .steps-list {
+      margin-top: 2em;
     }
-    .negative-result {
-      border-left-color: #e74c3c;
+    .step-item {
+      display: flex;
+      align-items: center;
+      padding: 0.8em 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .step-status {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      margin-right: 1em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8em;
+    }
+    .step-completed {
+      background: #00ff88;
+      color: #000;
+    }
+    .step-current {
+      background: #ffaa00;
+      color: #000;
+    }
+    .step-pending {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+    .step-text {
+      flex: 1;
+    }
+    .loading-spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top: 2px solid white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 1em;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .completion-message {
+      text-align: center;
+      font-size: 1.5em;
+      margin: 2em 0;
+      padding: 2em;
+      background: rgba(0,255,136,0.2);
+      border-radius: 15px;
+      border: 2px solid #00ff88;
+    }
+    .refresh-info {
+      text-align: center;
+      opacity: 0.7;
+      font-size: 0.9em;
+      margin-top: 2em;
     }
   </style>
 </head>
 <body>
-  <h1>転職AIエージェント シミュレーションログ（UI形式）</h1>
-  <!-- 以下、コンテンツはCanvas内容そのままです -->
-  <h2>0.1. SimulatedHRの求人要望</h2>
-<ul>
-<li><strong>position</strong>: AIエンジニア</li>
-<li><strong>background</strong>: 新規AIプロダクト開発のための増員</li>
-<li><strong>skills</strong>: [
-  "Python",
-  "LLM",
-  "クラウド経験"
-]</li>
-<li><strong>work_style</strong>: フルリモート可</li>
-<li><strong>min_salary</strong>: 700</li>
-<li><strong>culture_keywords</strong>: [
-  "自律性",
-  "挑戦",
-  "チームワーク"
-]</li>
-</ul>
-
-<h2>0.1.5. HRとEmployerAgentの会話</h2>
-<div class="chat-container">
-<div class="chat-bubble hr">
-<div class="sender">人事担当</div>
-今回はAIエンジニアの増員を検討しています。特にPythonとLLMの経験者がほしいですね。
-</div>
-<div class="chat-bubble hr">
-<div class="sender">企業担当</div>
-了解しました。リモートワークの希望や年収の目安、カルチャー面での重視ポイントも教えていただけますか？
-</div>
-<div class="chat-bubble hr">
-<div class="sender">人事担当</div>
-フルリモートは可能で、年収は700万円以上を想定しています。カルチャーは「自律性」「挑戦」「チームワーク」が重視です。
-</div>
-<div class="chat-bubble hr">
-<div class="sender">企業担当</div>
-ありがとうございます。今回の採用背景や、チームの規模・構成についても教えていただけますか？
-</div>
-<div class="chat-bubble hr">
-<div class="sender">人事担当</div>
-新規AIプロダクト開発のための増員で、現在は5人ほどのアジャイルチームで進めています。
-</div>
-<div class="chat-bubble hr">
-<div class="sender">企業担当</div>
-承知しました。スキル面ではクラウド経験（AWS/Azureなど）の具体性や、LLMの実務経験の範囲も明記したほうがよろしいでしょうか？
-</div>
-<div class="chat-bubble hr">
-<div class="sender">人事担当</div>
-はい、クラウドはAWSが望ましいです。LLMはモデル開発や微調整の経験があれば大歓迎です。
-</div>
-<div class="chat-bubble hr">
-<div class="sender">企業担当</div>
-了解しました。求人票に「フルリモート」「年収700万円以上」「自律的かつチャレンジできる環境」を明記し、チームのアジャイルな働き方を強調します。
-</div>
-</div>
-
-<h2>0.2. EmployerAgentが生成した求人票</h2>
-<div class="card job-posting">
-<h3>求人情報</h3>
-<h4>基本情報</h4><br>
-- ポジション: AIエンジニア<br>
-- 会社: Simulated Company<br>
-- 背景: 新規AIプロダクト開発のための増員<br>
-- 年収: 700万円〜<br>
-- 働き方: フルリモート可<br>
-<br>
-<h4>スキル・条件</h4><br>
-- 技術スタック:<br>
-    - Python<br>
-    - LLM<br>
-    - クラウド経験<br>
-- カルチャーキーワード:<br>
-    - 自律性<br>
-    - 挑戦<br>
-    - チームワーク<br>
-<br>
-<h4>特徴・ミッション</h4><br>
-- ミッション: AIエンジニアとして、新規AIプロダクト開発のための増員に挑戦し、社会に新しい価値を生み出す役割です。<br>
-- チーム: 自律性, 挑戦, チームワークを大切にする多様なメンバーが活躍中。協力し合いながら成長できる環境です。<br>
-- 成長機会: ['Python', 'LLM', 'クラウド経験']を活かしつつ、最先端のAI技術やクラウド開発に携わりながらスキルアップできます。<br>
-- 独自の魅力: フルリモート可、柔軟な働き方、挑戦を後押しするカルチャーなど、他社にはない魅力が多数。<br>
-- 求める人物像: Python, LLM, クラウド経験の経験があり、自律性, 挑戦, チームワークを大切にできる方を歓迎します。<br>
-</div>
-
-<h2>1. 転職相談の会話</h2>
-<div class="chat-container">
-<div class="chat-bubble hr">
-<div class="sender">求職者</div>
-今の職場で少し停滞感を感じていて、転職を考え始めたんだ。
-</div>
-<div class="chat-bubble agent">
-<div class="sender">転職AI</div>
-それは少し不安になるよね。今の仕事でどんなことに疑問を持たれているの？
-</div>
-<div class="chat-bubble hr">
-<div class="sender">求職者</div>
-医療AIのプロジェクトは面白いんだけど、組織の柔軟性やグローバルな視点が足りない気がする。
-</div>
-<div class="chat-bubble agent">
-<div class="sender">転職AI</div>
-そうだったんだ。これまでの経験で「社会課題を技術で解決したい」という想いが強くなったってこと？
-</div>
-<div class="chat-bubble hr">
-<div class="sender">求職者</div>
-そうかも。家族との時間や、教育プログラムの経験も含めて、もっと価値のある仕事をしたい。
-</div>
-<div class="chat-bubble agent">
-<div class="sender">転職AI</div>
-なるほど。そうした価値観に合った求人って、例えばどんな分野が思い当たる？
-</div>
-<div class="chat-bubble hr">
-<div class="sender">求職者</div>
-たとえば、医療と教育の交差点に興味があるんだけど…、どんな可能性があるの？
-</div>
-<div class="chat-bubble agent">
-<div class="sender">転職AI</div>
-そう来たか！例えば、国際的な医療AIスタートアップや、教育技術の革新に取り組む企業が…
-</div>
-<div class="chat-bubble hr">
-<div class="sender">求職者</div>
-どんな求人があるの？詳しく聞かせて！
-</div>
-</div>
-
-<h2>1. 求人概要提示</h2>
-<p>- ポジション: AIエンジニア  <br>
-- 会社: Simulated Company  <br>
-- 主な条件: フルリモート可、年収700万円〜、自律性・挑戦・チームワーク重視  <br>
-- 特徴: 新規AIプロダクト開発に直結、最先端のAI技術・クラウド開発に携われる、柔軟な働き方、挑戦を後押しするカルチャー、協力し合いながら成長できる環境</p>
-
-<h2>2. 求人推しプレゼン</h2>
-<p>この求人、あなたのスキルと価値観にピッタリ！  <br>
-<br>
-- 自律性と挑戦を大切にしてきた経験が活かせる  <br>
-- チームワークを重視する社風があなたの価値観と一致  <br>
-- フルリモートで家族との時間も大切にできる  <br>
-- PythonやNLPのスキルがそのまま活かせる  <br>
-- 社内AI教育プログラムの経験が新規プロダクト開発に活かせる  <br>
-- リーダーシップと協働力がこのチームでさらに成長する  <br>
-<br>
-子どもの頃のロボット作りが今もあなたの原点。この環境でまた新しい「何か」を作り出せる気がするよ。  <br>
-<br>
-"AIで世界を変える第一歩"</p>
-
-<h2>3. 応募意思確認</h2>
-<p>「君の熱意に押されちゃったけど、この挑戦はやるっきゃない！」</p>
-
-<h2>4. 応募理由・AI推薦付き履歴書</h2>
-<p>【履歴書】  <br>
-- 氏名: 鈴木健太  <br>
-- 職務経歴:  <br>
-  - テクノロジーアイズ株式会社 / データサイエンティスト（2020-現在）  <br>
-  - デジタルマーケティング支援会社 / マーケティングアナリスト（2018-2020）  <br>
-- スキル:  <br>
-  - Python, SQL, R  <br>
-  - データ可視化（Tableau, Power BI）  <br>
-  - マルチチャネル分析、A/Bテスト設計  <br>
-- 価値観: 好奇心, 持続的改善, メンターシップ, 信頼構築  <br>
-- 自己PR: 鈴木健太は、データを通じて課題解決に取り組んできたデータサイエンティストです。PythonやSQLを活用し、データ駆動型の意思決定を支援してきました。好奇心を持ち、持続的な改善を重んじる姿勢で、チームの成果向上に貢献してきました。また、メンターシップを通じて後輩を育て、信頼関係を大切にしています。  <br>
-<br>
-【AI推薦コメント】  <br>
-鈴木健太さんは、データサイエンティストとしての経験と価値観が、当社が求める「データで社会を変える」というミッションと非常にマッチしています。特に、データ可視化やA/Bテスト設計のスキルに加え、メンターシップを通じたチームの成長支援という観点で、当社のカルチャーである「知識共有」と「人材育成」に強く合います。  <br>
-<br>
-AI相棒として日々見てきた中で、鈴木さんの「持続的改善」への姿勢が際立っています。例えば、前職でマーケティング分析の精度向上を目指し、自ら新しいアルゴリズムを学んで実装したエピソードや、後輩に技術を教える際に「なぜそうするのか」を丁寧に説明する姿勢が、チームの信頼を築いています。また、困難なプロジェクトでも「一度で完璧を目指すより、小さな改善を積み重ねる」姿勢が、長期的な成果につながると感じています。  <br>
-<br>
-このように、技術力だけでなく、人間性と成長意欲を兼ね備えた方であるため、ぜひご検討いただければと思います。  <br>
-<br>
-※この履歴書・推薦文はAIエージェントが作成しています。</p>
-
-<h2>5. 履歴書提出</h2>
-<div class="card resume">
-<h3>履歴書・職務経歴書</h3>
-【氏名】山田太郎<br>
-【年齢】34歳<br>
-【現職】MedAI株式会社 / AIエンジニア／プロジェクトリーダー（2021-現在）<br>
-医療データ解析AIの開発・導入、NLPプロジェクトのリード、社内AI教育プログラムの設計・推進<br>
-【職歴】<br>
-- Tech Solutions / バックエンドエンジニア（2017-2020）: 大規模ECサイトのAPI設計・運用、チームリーダー<br>
-- AI Analytics Lab / AIエンジニア（2020-2021）: 自然言語処理モデル開発、社内AI教育プログラム推進<br>
-【スキル】Python, TensorFlow, 英語（ビジネス）, プロジェクトマネジメント, NLP, 教育設計<br>
-【価値観】自律性, 挑戦, チームワーク, 信頼関係, 成長志向<br>
-【タグ】AIエンジニア, リーダーシップ, 家族思い, 社会貢献志向, 多趣味, グローバル志向<br>
-【自己PR】<br>
-山田太郎はMedAI株式会社でAIエンジニア／プロジェクトリーダーとして活躍し、Python, TensorFlow, 英語（ビジネス）, プロジェクトマネジメント, NLP, 教育設計などのスキルを活かしてきました。自律性, 挑戦, チームワーク, 信頼関係, 成長志向を大切にし、現場の課題解決やチームでの協働に強みがあります。新しい環境でも自律的に挑戦し、社会に貢献したいと考えています。<br>
-【希望条件】年収900万円以上 / フルリモート可 / カルチャー: 自律性, 挑戦, 社会貢献<br>
-</div>
-
-<h2>6. empaiによる書類審査</h2>
-<p>合否: 合格  <br>
-理由: AIエンジニアとしての実務経験（医療AI開発、NLPプロジェクトリード）とリーダーシップスキル（チームリーダー、教育プログラム設計）が強く、価値観（自律性、挑戦、社会貢献）も企業文化と一致するため。</p>
-
-<h2>7. simhrの意見</h2>
-<p>意見: 賛成  <br>
-コメント: 実務経験とリーダーシップスキルは企業のAI開発ニーズに直結し、価値観の一致はチームのカルチャーに適応しやすい。ただし、今後のキャリアパスやチームとの相性を確認するため、面接で具体的なプロジェクト経験や価値観の実践例を深掘りする必要がある。</p>
-
-<h2>8. 書類選考・最終判定</h2>
-<div class="result-box positive-result">
-<p>合否: 合格<br>
-理由: empai・simhrともに合格判断。理由: AIエンジニアとしての実務経験（医療AI開発、NLPプロジェクトリード）とリーダーシップスキル（チームリーダー、教育プログラム設計）が強く、価値観（自律性、挑戦、社会貢献）も企業文化と一致するため。 / 実務経験とリーダーシップスキルは企業のAI開発ニーズに直結し、価値観の一致はチームのカルチャーに適応しやすい。ただし、今後のキャリアパスやチームとの相性を確認するため、面接で具体的なプロジェクト経験や価値観の実践例を深掘りする必要がある。</p>
-</div>
-
-<h2>11. 一次面接 質問</h2>
-<div class="interview-qa">
-<h3>面接質問</h3>
-<p>「現在の職務で最も挑戦的だったNLPプロジェクトについて、具体的な成果と学びを教えてください。」</p>
-</div>
-
-<h2>14. 一次面接 回答</h2>
-<div class="interview-qa">
-<h3>面接回答</h3>
-<p>現在の職務で最も挑戦的だったプロジェクトは、医療分野向けの**多言語対応チャットボットの開発**です。このプロジェクトでは、英語・中国語・韓国語の3言語をカバーし、医療用語の正確な理解と自然な対話が求められました。特に、**医療分野の専門用語の多義性**と**言語ごとの文法構造の違い**が大きな課題でした。  <br>
-<br>
-**具体的な挑戦**:  <br>
-- データの偏りが大きい中で、各言語の医療文書を収集・ラベル付けし、モデルの精度を向上させる必要がありました。  <br>
-- チームメンバーが3カ国に分散していたため、スケジュール調整や意思決定のスピードに課題を感じました。  <br>
-<br>
-**成果**:  <br>
-- チームと協力し、**カスタムのトークン化アルゴリズム**と**多言語の知識グラフ**を組み合わせることで、精度を85%から93%に向上させました。  <br>
-- デプロイ後、患者の問い合わせ対応時間を40%短縮し、ユーザー満足度調査で「非常に使いやすい」との評価を得ました。  <br>
-<br>
-**学び**:  <br>
-- 領域特有のデータの重要性を実感し、**専門家との密接な連携**がモデルの信頼性を高めることを学びました。  <br>
-- リモートチームの管理においては、**明確なタスク定義と定期的なフィードバック**がチームの生産性を向上させると実感しました。  <br>
-<br>
-この経験を通じて、**技術的課題と人間関係の両方を考慮したリーダーシップ**が、複雑なプロジェクトを成功に導く鍵だと学びました。</p>
-</div>
-
-<h2>17. 一次面接 判定</h2>
-<div class="result-box positive-result">
-<p>合格</p>
-</div>
-
-<h2>20. 一次面接 評価</h2>
-<div class="interview-qa">
-<h3>面接評価</h3>
-<p><strong>評価:</strong>  <br>
-この回答は、**明確な構成**（課題・具体例・成果・学び）で、**専門性と実績**が適切に表現されています。技術的な難しさ（医療用語の多義性、多言語文法の違い）に加え、**リモートチームの管理**という人間的課題も捉え、**技術的・人間的両面のリーダーシップ**の重要性を示すなど、深い考察が見られます。データ収集・モデル改善の具体的な手法（カスタムトークン化、知識グラフ）と**数値的な成果**（精度向上、対応時間短縮）が強みで、**実務経験の質**が際立ちます。一方で、リモートチームの課題に対する**具体的な対応策**（例: フィードバックの頻度やツールの活用）がさらに明確であれば、より完璧な回答となるでしょう。全体的に**課題解決力とリーダーシップの両備**えが評価されます。</p>
-</div>
-
-<h2>23. 二次面接 質問</h2>
-<div class="interview-qa">
-<h3>面接質問</h3>
-<p>「NLPプロジェクトでTensorFlowをどのように活用しましたか？」</p>
-</div>
-
-<h2>26. 二次面接 回答</h2>
-<div class="interview-qa">
-<h3>面接回答</h3>
-<p>MedAIで医療テキストの情報抽出を目的としたNLPプロジェクトをリードした際、TensorFlowを活用してモデル開発を推進しました。具体的には、医療文書から疾患や薬剤情報を抽出するための「医療テキスト分類モデル」を構築。  <br>
-- **モデル構築**：BERTをベースにしたカスタムモデルをKerasで実装。TensorFlowのtf.data APIを活用し、大規模な医療データセットの効率的な読み込みとバッチ処理を実現。  <br>
-- **チーム協力**：データエンジニアと連携し、医療用語のベクトル化処理をTensorFlowのEmbeddingレイヤーで最適化。  <br>
-- **実装・展開**：モデルをTensorFlow ServingでAPI化し、医療機関の診療支援システムに統合。  <br>
-このプロジェクトでは、技術的課題だけでなく、医療分野におけるデータプライバシーの配慮もチームで議論し、信頼性のあるソリューションを実現しました。</p>
-</div>
-
-<h2>29. 二次面接 判定</h2>
-<div class="result-box positive-result">
-<p>合格</p>
-</div>
-
-<h2>32. 二次面接 評価</h2>
-<div class="interview-qa">
-<h3>面接評価</h3>
-<p>**評価**:  <br>
-技術的スキル（BERT/Keras/TF Serving）とチーム協力、医療分野のニーズ（データプライバシー）への配慮が明確に記述されており、実務経験が示されている。モデル構築～展開までのフローが体系的で、専門性と実践力を兼ね備えている。ただし、課題解決の具体性や成果の定量的記述がやや不足。</p>
-</div>
-
-<h2>35. 最終面接 質問</h2>
-<div class="interview-qa">
-<h3>面接質問</h3>
-<p>「ご自身の価値観をもとに、チームでの信頼関係を築きながら、新しい挑戦を推進する具体的な方法を教えてください。」</p>
-</div>
-
-<h2>38. 最終面接 回答</h2>
-<div class="interview-qa">
-<h3>面接回答</h3>
-<p>私の価値観である「チームワーク」と「信頼関係」を基に、新しい挑戦を推進するためには、**透明性と対等なコミュニケーション**を重視しています。例えば、以前MedAIで医療AIのNLPプロジェクトをリードした際、チーム内で技術的な課題が生じた際、私は自身の知識に頼らず、全員の意見を聞き、それぞれの強みを活かす形で解決策を一緒に探しました。その結果、メンバーが「自分の意見が価値ある」と感じ、信頼が生まれました。また、新しい技術を導入する際は、**学びの機会を共有**し、失敗を恐れずに挑戦できる環境を作ることで、成長志向を支えました。例えば、TensorFlowの新バージョンをプロジェクトに取り入れる際には、週1回の勉強会を開催し、全員が同じペースで学べるようにしました。これにより、技術の進化に柔軟に対応できるチームとなり、新しい挑戦への自信が高まりました。このように、信頼を築くためには「共に学ぶ姿勢」と「個々の貢献を尊重する姿勢」が不可欠だと考えています。</p>
-</div>
-
-<h2>41. 最終面接 判定</h2>
-<div class="result-box positive-result">
-<p>合格</p>
-</div>
-
-<h2>44. 最終面接 評価</h2>
-<div class="interview-qa">
-<h3>面接評価</h3>
-<p><strong>評価:</strong>  <br>
-価値観を明確に示し、具体的な実績（医療AIプロジェクト、TensorFlow導入の例）を通じて「チームワーク」「信頼関係」「学びの共有」の重要性を説明できている。透明性と対等なコミュニケーション、個々の貢献を尊重する姿勢が明確に伝わる。実践的なアプローチと成長志向の姿勢が評価できるが、課題解決の難易度や成果の定量的評価に少し触れるとさらに説得力が増す。</p>
-</div>
-
-<h2>47. 初回オファー提示</h2>
-<ul>
-<li><strong>年収</strong>: 735</li>
-<li><strong>入社日</strong>: 2024-07-01</li>
-<li><strong>役職</strong>: 一般社員</li>
-<li><strong>勤務形態</strong>: フルリモート可</li>
-</ul>
-
-<h2>50. 交渉ラウンド1 求職者リクエスト</h2>
-<div class="card">
-<h3>オファー情報</h3>
-<p>特にありません</p>
-</div>
-
-<h2>53. 交渉ラウンド1 合意</h2>
-<ul>
-<li><strong>年収</strong>: 735</li>
-<li><strong>入社日</strong>: 2024-07-01</li>
-<li><strong>役職</strong>: 一般社員</li>
-<li><strong>勤務形態</strong>: フルリモート可</li>
-</ul>
-
-<h2>54. オファー受諾判断プロセス</h2>
-<div class="chat-container">
-<div class="chat-bubble hr">
-<div class="sender">求職者</div>
-「年収が700万円で、現職の735万円より少し下がるけど、フルリモートが可能で、AIエンジニアとしてのキャリアが広がるなら…でも、ちょっと迷うな。」
-</div>
-<div class="chat-bubble agent">
-<div class="sender">転職AI</div>
-「まず、年収の違いが本当に大きな問題ですか？例えば、これまでのキャリアで、金額よりも「価値観に合った環境」を選んだ経験はありますか？…  
-**例**：医療AIプロジェクトで、収入よりも「医師と協働して現場の課題を解決する」というミッションに惹かれて転職した経験を思い出してください。」
-</div>
-<div class="chat-bubble hr">
-<div class="sender">求職者</div>
-「そうね…前の会社でも、収入より「チームの信頼関係」や「社会貢献」が大事だったわ。でも、家族のことを考えると、少しでも安定した収入はほしい気もする。」
-</div>
-<div class="chat-bubble agent">
-<div class="sender">転職AI</div>
-「では、このオファーが「あなたの価値観と一致するか」をもう一度整理してみましょう。例えば、**「自律性」「挑戦」「チームワーク」**という文化が、これまでのあなたの働き方に合っていると感じますか？…  
-**例**：MedAIで医師と協働した経験や、NLPプロジェクトでのリーダーシップが、この会社の「チームワーク」に通じるかもしれません。」
-</div>
-<div class="chat-bubble hr">
-<div class="sender">求職者</div>
-「確かに、これまでの経験と合う部分はある。でも、年収の差が気になって…。一晩考えたいな。」
-</div>
-<div class="chat-bubble agent">
-<div class="sender">転職AI</div>
-「その気持ちは当然です。では、もう一つ問いかけます：**「このオファーが、あなたの長期的なキャリアでどこに立ち止まるか？」** と聞かれたら、どう答えますか？…  
-**例**：もし「スキルの幅を広げて、グローバルなAI開発に挑戦したい」という願いが強いなら、この会社の「新規プロダクト開発」の機会が大きなステップになるかもしれません。」
-</div>
-<div class="chat-bubble hr">
-<div class="sender">求職者</div>
-「そう考えると、この機会は大きいかも。年収は少し下がるけど、新しい技術（LLMやクラウド）に触れられるし、リモートで家族との時間を大切にできる…。受諾するよ。」
-</div>
-<div class="chat-bubble agent">
-<div class="sender">転職AI</div>
-「ご決断ありがとうございます。この選択が、あなたの「社会にインパクトを与える」という軸に沿って、前向きな一歩になることを願っています。」  
-
-**受諾**
-</div>
-</div>
-
-<h2>57. 最終決断</h2>
-<div class="result-box positive-result">
-<p>受諾</p>
-</div>
-
+  <div class="container">
+    <div class="header">
+      <h1>🤖 転職AIエージェント</h1>
+      <div class="subtitle">リアルタイムシミュレーション</div>
+    </div>
+    
+    <div class="progress-container">
+      <div class="current-step">
+        🎉 シミュレーション完了！
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: 100%"></div>
+      </div>
+      <div style="text-align: center; margin: 1em 0;">
+        進捗: 43/43 ステップ (100.0%)
+      </div>
+      
+      
+            <div class="completion-message">
+              🎉 転職シミュレーションが完了しました！<br>
+              詳細なログは静的版HTMLファイルをご確認ください。
+            </div>
+      
+      <div class="steps-list">
+        <h3>実行ステップ</h3>
+        
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">0.1. SimulatedHRの求人要望</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">0.1.5. HRとEmployerAgentの会話</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">0.2. EmployerAgentが生成した求人票</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">1. 転職相談の会話</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">1. 求人概要提示</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">2. 求人推しプレゼン</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">3. 応募意思確認</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">4. 応募理由・AI推薦付き履歴書</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">5. 履歴書提出</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">6. empaiによる書類審査</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">7. simhrの意見</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">8. 書類選考・最終判定</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">11. 一次面接 質問</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">14. 一次面接 回答</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">15. 一次面接後・企業側振り返り会議</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">18. 一次面接 企業判定</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">19. 一次面接後・求職者側振り返り会議</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">22. 一次面接 求職者判定</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">25. 一次面接 最終判定</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">28. 二次面接 質問</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">31. 二次面接 回答</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">32. 二次面接後・企業側振り返り会議</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">35. 二次面接 企業判定</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">36. 二次面接後・求職者側振り返り会議</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">39. 二次面接 求職者判定</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">42. 二次面接 最終判定</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">45. 最終面接 質問</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">48. 最終面接 回答</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">49. 最終面接後・企業側振り返り会議</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">52. 最終面接 企業判定</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">53. 最終面接後・求職者側振り返り会議</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">56. 最終面接 求職者判定</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">59. 最終面接 最終判定</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">62. 初回オファー提示</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">65. 交渉ラウンド1 求職者リクエスト</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">68. 交渉ラウンド1 企業再提示</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">71. 交渉ラウンド2 求職者リクエスト</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">74. 交渉ラウンド2 企業再提示</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">77. 交渉ラウンド3 求職者リクエスト</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">80. 交渉ラウンド3 企業再提示</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">83. 交渉ラウンド3 打ち切り</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">84. オファー受諾判断プロセス</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">87. 最終決断</div>
+            </div>
+      </div>
+      
+      <div class="refresh-info">
+        このページは3秒ごとに自動更新されます
+      </div>
+    </div>
+  </div>
 </body>
 </html>

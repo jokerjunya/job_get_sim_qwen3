@@ -23,14 +23,48 @@ class EmployerAgent(BaseAgent):
         # まずは必ず合格・簡単なフィードバックを返す
         return True, "書類選考合格です。次のステップへ進みます。"
 
-    async def update_offer(self, offer: dict, request: str) -> str:
+    async def update_offer(self, offer: dict, request: str) -> dict:
         with open("prompts/offer_negotiation_employer.txt", encoding="utf-8") as f:
             prompt_template = f.read().strip()
         prompt = prompt_template.format(offer=offer, request=request)
-        new_offer = await self.llm.generate_content_async(prompt)
-        return new_offer.strip()
+        response = await self.llm.generate_content_async(prompt, agent_name="EmployerAgent（企業AI）")
+        
+        # レスポンスを解析してオファーを更新
+        response_lower = response.lower().strip()
+        
+        # オファーのコピーを作成
+        updated_offer = offer.copy()
+        
+        # 年収に関する調整
+        if "年収" in request or "給与" in request or "salary" in request.lower():
+            if "上げる" in response or "増額" in response or "引き上げ" in response:
+                current_salary = updated_offer.get("年収", 0)
+                updated_offer["年収"] = int(current_salary * 1.05)  # 5%増
+            elif "現状維持" in response or "変更なし" in response:
+                pass  # そのまま
+        
+        # 入社日に関する調整
+        if "入社日" in request or "開始日" in request:
+            if "調整" in response or "相談" in response:
+                updated_offer["入社日"] = "要相談"
+        
+        # その他の条件調整
+        if "役職" in request:
+            if "検討" in response or "上位" in response:
+                updated_offer["役職"] = "シニア" + updated_offer.get("役職", "ポジション")
+        
+        # リクエストが「特にありません」の場合はそのまま
+        if "特にありません" in request or "ありません" in request:
+            return updated_offer
+        
+        # デフォルトの応答メッセージをオファーに含める場合
+        if response.strip() and not any(key in response for key in ["年収", "入社日", "役職"]):
+            # レスポンスが具体的な調整でない場合、メッセージとして記録
+            updated_offer["企業からのメッセージ"] = response.strip()
+        
+        return updated_offer
 
-    async def generate_initial_offer(self, seeker_profile: dict, job: dict, interview_evaluations: list = None) -> dict:
+    def generate_initial_offer(self, seeker_profile: dict, job: dict, interview_evaluations: list = None) -> dict:
         """
         面接評価や求職者のスキル/経験を反映した初回オファーを生成する。
         
@@ -156,7 +190,7 @@ class EmployerAgent(BaseAgent):
         with open("prompts/employer_resume_screening.txt", encoding="utf-8") as f:
             prompt_template = f.read().strip()
         prompt = prompt_template.format(resume=resume)
-        result = await self.llm.generate_content_async(prompt)
+        result = await self.llm.generate_content_async(prompt, agent_name="EmployerAgent（企業AI）")
         # シンプルなパース（合否・理由）
         lines = [l.strip() for l in result.split("\n") if l.strip()]
         judgement = {"raw": result, "decision": None, "reason": None}
