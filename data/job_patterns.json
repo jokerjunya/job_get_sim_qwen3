@@ -1,0 +1,152 @@
+[
+  {
+    "id": "startup_frontend",
+    "company_type": "スタートアップ",
+    "industry": "EdTech",
+    "size": "30名",
+    "position": "フロントエンドエンジニア",
+    "mission": "教育格差を解消する",
+    "requirements": {
+      "experience": "1-3年",
+      "skills": ["React", "TypeScript", "UI/UX感覚"],
+      "preferred": ["Next.js", "デザインツール経験", "教育への関心"]
+    },
+    "conditions": {
+      "salary_range": "400-550万円",
+      "work_style": "フルリモート",
+      "benefits": ["ストックオプション", "書籍購入支援", "勉強会参加費支援"]
+    },
+    "culture": ["アジャイル", "フラット", "挑戦重視", "成長機会豊富"],
+    "appeal_points": [
+      "急成長中のサービス開発に携われる",
+      "技術選定の裁量が大きい",
+      "社会貢献度の高い事業",
+      "若いチームで新しいアイデアを実現"
+    ]
+  },
+  {
+    "id": "corporate_pm",
+    "company_type": "大手企業",
+    "industry": "金融",
+    "size": "3000名",
+    "position": "ITプロジェクトマネージャー",
+    "mission": "金融DXを推進する",
+    "requirements": {
+      "experience": "5年以上",
+      "skills": ["プロジェクト管理", "システム開発経験", "ステークホルダー調整"],
+      "preferred": ["金融業界経験", "アジャイル開発", "クラウド知識"]
+    },
+    "conditions": {
+      "salary_range": "650-850万円",
+      "work_style": "ハイブリッド（週2-3出社）",
+      "benefits": ["退職金制度", "家族手当", "資格取得支援", "長期休暇制度"]
+    },
+    "culture": ["安定性", "専門性重視", "長期キャリア", "福利厚生充実"],
+    "appeal_points": [
+      "安定した基盤での大規模プロジェクト",
+      "金融業界のDX最前線に参加",
+      "充実した教育制度とキャリアパス",
+      "ワークライフバランス重視"
+    ]
+  },
+  {
+    "id": "consulting_analyst",
+    "company_type": "コンサルティング",
+    "industry": "戦略コンサル",
+    "size": "500名",
+    "position": "データアナリスト",
+    "mission": "データで企業変革を支援する",
+    "requirements": {
+      "experience": "2-5年",
+      "skills": ["データ分析", "Python/R", "ビジネス理解", "コミュニケーション"],
+      "preferred": ["機械学習", "コンサル経験", "業界知識", "英語"]
+    },
+    "conditions": {
+      "salary_range": "550-750万円",
+      "work_style": "クライアント先中心（出張多め）",
+      "benefits": ["高額賞与", "海外研修", "MBA取得支援", "フレックス"]
+    },
+    "culture": ["成果主義", "プロフェッショナル", "学習重視", "グローバル"],
+    "appeal_points": [
+      "多様な業界の課題解決に携われる",
+      "最先端の分析手法を実践",
+      "高いレベルの同僚との切磋琢磨",
+      "急速なスキルアップが可能"
+    ]
+  },
+  {
+    "id": "venture_fullstack",
+    "company_type": "ベンチャー",
+    "industry": "SaaS",
+    "size": "80名",
+    "position": "フルスタックエンジニア",
+    "mission": "中小企業の業務効率化を革新する",
+    "requirements": {
+      "experience": "3年以上",
+      "skills": ["フロントエンド", "バックエンド", "インフラ", "チーム開発"],
+      "preferred": ["SaaS開発経験", "AWS", "マイクロサービス", "DevOps"]
+    },
+    "conditions": {
+      "salary_range": "500-700万円",
+      "work_style": "リモート中心（月1-2回出社）",
+      "benefits": ["ストックオプション", "副業OK", "最新機器支給", "カジュアル面談歓迎"]
+    },
+    "culture": ["スピード感", "オーナーシップ", "技術重視", "フラット"],
+    "appeal_points": [
+      "サービス全体を見渡せるポジション",
+      "技術的な裁量と責任が大きい",
+      "急成長する事業フェーズ",
+      "少数精鋭でのプロダクト開発"
+    ]
+  },
+  {
+    "id": "enterprise_architect",
+    "company_type": "大手IT企業",
+    "industry": "システムインテグレーション",
+    "size": "10000名",
+    "position": "ソリューションアーキテクト",
+    "mission": "次世代企業システムをデザインする",
+    "requirements": {
+      "experience": "10年以上",
+      "skills": ["システム設計", "クラウドアーキテクチャ", "技術選定", "チームリード"],
+      "preferred": ["AWS/Azure認定", "英語", "顧客折衝経験", "大規模システム"]
+    },
+    "conditions": {
+      "salary_range": "800-1200万円",
+      "work_style": "ハイブリッド",
+      "benefits": ["技術手当", "海外カンファレンス参加", "社内認定制度", "メンター制度"]
+    },
+    "culture": ["技術追求", "品質重視", "継続学習", "専門性"],
+    "appeal_points": [
+      "最新技術を使った大規模システム構築",
+      "技術的リーダーシップを発揮",
+      "豊富な学習機会と認定制度",
+      "安定した環境での技術挑戦"
+    ]
+  },
+  {
+    "id": "ecommerce_marketing",
+    "company_type": "EC企業",
+    "industry": "eコマース",
+    "size": "200名",
+    "position": "マーケティングエンジニア",
+    "mission": "データドリブンマーケティングを推進する",
+    "requirements": {
+      "experience": "営業またはマーケティング経験",
+      "skills": ["顧客理解", "データ分析基礎", "コミュニケーション", "学習意欲"],
+      "preferred": ["プログラミング学習経験", "Webマーケティング", "SQL基礎"]
+    },
+    "conditions": {
+      "salary_range": "350-500万円",
+      "work_style": "出社中心（研修充実）",
+      "benefits": ["未経験研修制度", "メンター制度", "資格取得支援", "社員割引"]
+    },
+    "culture": ["学習支援", "多様性", "顧客中心", "成長重視"],
+    "appeal_points": [
+      "未経験からのキャリアチェンジ支援",
+      "マーケティングとITの両方を習得",
+      "実際の事業成果が見える環境",
+      "手厚い教育制度とサポート体制"
+    ]
+  }
+] 

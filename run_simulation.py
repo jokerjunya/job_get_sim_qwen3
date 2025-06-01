@@ -9,6 +9,7 @@ from agents.job_simulation.employer_agent import EmployerAgent
 from agents.job_simulation.simulated_seeker import SimulatedSeeker
 from agents.job_simulation.simulated_interviewer import SimulatedInterviewer
 from agents.job_simulation.simulated_hr import SimulatedHR
+from agents.job_simulation.data_manager import DataManager
 
 async def main():
     now_str = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -24,9 +25,33 @@ async def main():
     completed_steps = []  # 完了したステップリスト
     is_simulation_completed = False  # シミュレーション完了フラグ
     
+    # DataManagerを初期化
+    data_manager = DataManager()
+    
+    # データの統計情報を表示
+    stats = data_manager.get_stats()
+    print("📊 データ統計情報:")
+    print(f"  求職者数: {stats['seekers_count']}")
+    print(f"  求人パターン数: {stats['job_patterns_count']}")
+    print(f"  静的求人数: {stats['static_jobs_count']}")
+    print(f"  求職者タイプ: {', '.join(set(stats['seeker_types']))}")
+    print(f"  求人タイプ: {', '.join(set(stats['job_types']))}")
+    print("")
+    
+    # ランダムに求職者と求人を選択
+    seeker_profile, generated_job = data_manager.get_simulation_pair()
+    
+    print("🎲 今回のシミュレーション組み合わせ:")
+    print(f"  求職者: {seeker_profile['name']} ({seeker_profile.get('age', '?')}歳)")
+    print(f"  現職: {seeker_profile.get('current_job', {}).get('company', '?')} - {seeker_profile.get('current_job', {}).get('role', '?')}")
+    print(f"  タグ: {', '.join(seeker_profile.get('tags', []))}")
+    print(f"  求人: {generated_job['title']} at {generated_job['company']}")
+    print(f"  業界: {generated_job.get('industry', '?')} / 企業タイプ: {generated_job.get('company_type', '?')}")
+    print("")
+    
     # リアルタイムHTML生成のための初期化
     def init_realtime_html():
-        html_template = '''<!DOCTYPE html>
+        html_template = f'''<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -34,52 +59,59 @@ async def main():
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="refresh" content="3">
   <style>
-    body {
+    body {{
       font-family: 'Helvetica Neue', 'Arial', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       margin: 0;
       padding: 2em;
       min-height: 100vh;
       color: white;
-    }
-    .container {
+    }}
+    .container {{
       max-width: 800px;
       margin: 0 auto;
-    }
-    .header {
+    }}
+    .header {{
       text-align: center;
       margin-bottom: 2em;
-    }
-    h1 {
+    }}
+    h1 {{
       font-size: 2.5em;
       margin-bottom: 0.5em;
       font-weight: 300;
-    }
-    .subtitle {
+    }}
+    .subtitle {{
       font-size: 1.2em;
       opacity: 0.9;
-    }
-    .progress-container {
+    }}
+    .simulation-info {{
+      background: rgba(255,255,255,0.1);
+      border-radius: 15px;
+      padding: 1.5em;
+      margin: 1em 0;
+      backdrop-filter: blur(10px);
+    }}
+    .progress-container {{
       background: rgba(255,255,255,0.1);
       border-radius: 15px;
       padding: 2em;
       margin: 2em 0;
       backdrop-filter: blur(10px);
-    }
-    .progress-bar {
+    }}
+    .progress-bar {{
       background: rgba(255,255,255,0.2);
       border-radius: 10px;
       height: 8px;
       margin: 1em 0;
       overflow: hidden;
-    }
-    .progress-fill {
+    }}
+    .progress-fill {{
       background: linear-gradient(90deg, #00ff88, #00ccff);
       height: 100%;
       border-radius: 10px;
       transition: width 0.5s ease;
-    }
-    .current-step {
+    }}
+    .current-step {{
       font-size: 1.3em;
       font-weight: 500;
       margin: 1em 0;
@@ -87,17 +119,17 @@ async def main():
       background: rgba(255,255,255,0.15);
       border-radius: 10px;
       border-left: 4px solid #00ff88;
-    }
-    .steps-list {
+    }}
+    .steps-list {{
       margin-top: 2em;
-    }
-    .step-item {
+    }}
+    .step-item {{
       display: flex;
       align-items: center;
       padding: 0.8em 0;
       border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
-    .step-status {
+    }}
+    .step-status {{
       width: 24px;
       height: 24px;
       border-radius: 50%;
@@ -106,23 +138,23 @@ async def main():
       align-items: center;
       justify-content: center;
       font-size: 0.8em;
-    }
-    .step-completed {
+    }}
+    .step-completed {{
       background: #00ff88;
       color: #000;
-    }
-    .step-current {
+    }}
+    .step-current {{
       background: #ffaa00;
       color: #000;
-    }
-    .step-pending {
+    }}
+    .step-pending {{
       background: rgba(255,255,255,0.2);
       color: #fff;
-    }
-    .step-text {
+    }}
+    .step-text {{
       flex: 1;
-    }
-    .loading-spinner {
+    }}
+    .loading-spinner {{
       width: 20px;
       height: 20px;
       border: 2px solid rgba(255,255,255,0.3);
@@ -130,12 +162,12 @@ async def main():
       border-radius: 50%;
       animation: spin 1s linear infinite;
       margin-left: 1em;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    .completion-message {
+    }}
+    @keyframes spin {{
+      0% {{ transform: rotate(0deg); }}
+      100% {{ transform: rotate(360deg); }}
+    }}
+    .completion-message {{
       text-align: center;
       font-size: 1.5em;
       margin: 2em 0;
@@ -143,13 +175,13 @@ async def main():
       background: rgba(0,255,136,0.2);
       border-radius: 15px;
       border: 2px solid #00ff88;
-    }
-    .refresh-info {
+    }}
+    .refresh-info {{
       text-align: center;
       opacity: 0.7;
       font-size: 0.9em;
       margin-top: 2em;
-    }
+    }}
   </style>
 </head>
 <body>
@@ -157,6 +189,15 @@ async def main():
     <div class="header">
       <h1>🤖 転職AIエージェント</h1>
       <div class="subtitle">リアルタイムシミュレーション</div>
+    </div>
+    
+    <div class="simulation-info">
+      <h3>🎲 今回のシミュレーション</h3>
+      <p><strong>求職者:</strong> {seeker_profile['name']} ({seeker_profile.get('age', '?')}歳)</p>
+      <p><strong>現職:</strong> {seeker_profile.get('current_job', {}).get('company', '?')} - {seeker_profile.get('current_job', {}).get('role', '?')}</p>
+      <p><strong>特徴:</strong> {', '.join(seeker_profile.get('tags', []))}</p>
+      <p><strong>求人:</strong> {generated_job['title']} at {generated_job['company']}</p>
+      <p><strong>業界:</strong> {generated_job.get('industry', '?')} / {generated_job.get('company_type', '?')}</p>
     </div>
     
     <div class="progress-container">
@@ -287,6 +328,13 @@ async def main():
       font-size: 1.2em;
       opacity: 0.9;
     }}
+    .simulation-info {{
+      background: rgba(255,255,255,0.1);
+      border-radius: 15px;
+      padding: 1.5em;
+      margin: 1em 0;
+      backdrop-filter: blur(10px);
+    }}
     .progress-container {{
       background: rgba(255,255,255,0.1);
       border-radius: 15px;
@@ -385,6 +433,15 @@ async def main():
     <div class="header">
       <h1>🤖 転職AIエージェント</h1>
       <div class="subtitle">リアルタイムシミュレーション</div>
+    </div>
+    
+    <div class="simulation-info">
+      <h3>🎲 今回のシミュレーション</h3>
+      <p><strong>求職者:</strong> {seeker_profile['name']} ({seeker_profile.get('age', '?')}歳)</p>
+      <p><strong>現職:</strong> {seeker_profile.get('current_job', {}).get('company', '?')} - {seeker_profile.get('current_job', {}).get('role', '?')}</p>
+      <p><strong>特徴:</strong> {', '.join(seeker_profile.get('tags', []))}</p>
+      <p><strong>求人:</strong> {generated_job['title']} at {generated_job['company']}</p>
+      <p><strong>業界:</strong> {generated_job.get('industry', '?')} / {generated_job.get('company_type', '?')}</p>
     </div>
     
     <div class="progress-container">
@@ -831,6 +888,7 @@ async def main():
     simulated_hr.llm = seeker_agent.llm
     employer_agent = EmployerAgent()
 
+    # 既存のHR要望生成は残す（互換性のため）
     hr_needs = simulated_hr.provide_needs()
     log_json("0.1. SimulatedHRの求人要望", hr_needs)
     log_md("0.1. SimulatedHRの求人要望", hr_needs)
@@ -855,27 +913,51 @@ async def main():
     log_md("0.1.5. HRとEmployerAgentの会話", hr_emp_conversation_clean)
     log_html("0.1.5. HRとEmployerAgentの会話", hr_emp_conversation_clean)
 
-    job_posting = employer_agent.create_job_posting(simulated_hr)
-    log_json("0.2. EmployerAgentが生成した求人票", job_posting)
-    formatted_job_posting = format_job_posting_md(job_posting)
-    log_md("0.2. EmployerAgentが生成した求人票", formatted_job_posting)
-    log_html("0.2. EmployerAgentが生成した求人票", formatted_job_posting)
-    print("\n【SimulatedHRとEmployerAgentによる新規求人作成】")
-    print(job_posting)
+    # DataManagerで生成された求人を使用（HR要望ベースの求人生成は引き続き実行するが、実際のシミュレーションでは使わない）
+    traditional_job_posting = employer_agent.create_job_posting(simulated_hr)
+    log_json("0.2. EmployerAgentが生成した従来求人票（参考）", traditional_job_posting)
+    formatted_traditional_job_posting = format_job_posting_md(traditional_job_posting)
+    log_md("0.2. EmployerAgentが生成した従来求人票（参考）", formatted_traditional_job_posting)
+    log_html("0.2. EmployerAgentが生成した従来求人票（参考）", formatted_traditional_job_posting)
+    print("\n【従来の求人生成（参考）】")
+    print(traditional_job_posting)
 
-    # データ読み込み
-    with open('data/seekers.json', encoding='utf-8') as f:
-        seekers = json.load(f)
-    with open('data/jobs.json', encoding='utf-8') as f:
-        jobs = json.load(f)
+    # DataManagerで選択した求人票を実際のシミュレーションで使用
+    log_json("0.3. 今回使用する求人票", generated_job)
+    formatted_generated_job = format_job_posting_md(generated_job)
+    log_md("0.3. 今回使用する求人票", formatted_generated_job)
+    log_html("0.3. 今回使用する求人票", formatted_generated_job)
+    print("\n【今回のシミュレーションで使用する求人票】")
+    print(generated_job)
 
-    seeker_profile = seekers[0]
-    # job_listを新規求人のみとする
-    job_list = [job_posting]
+    # job_listを選択された求人とする
+    job_list = [generated_job]
 
     # エージェント初期化
     simulated_seeker = SimulatedSeeker()
-    interviewer = SimulatedInterviewer()
+    # 面接官情報を求人データから取得
+    interviewer_info = None
+    if generated_job.get("interviewers"):
+        interviewer_info = generated_job["interviewers"][0]  # 最初の面接官を使用
+    
+    if interviewer_info is None:
+        # フォールバック：デフォルトの面接官情報
+        interviewer_info = {
+            "name": "田中部長",
+            "role": "開発部長",
+            "availability": [
+                {
+                    "start": "2025-01-20T14:00:00+09:00",
+                    "end": "2025-01-20T18:00:00+09:00"
+                },
+                {
+                    "start": "2025-01-22T10:00:00+09:00",
+                    "end": "2025-01-22T16:00:00+09:00"
+                }
+            ]
+        }
+    
+    interviewer = SimulatedInterviewer(info=interviewer_info)
 
     # --- seekerとseekerAIの会話をまとめて生成・表示 ---
     conversation_example = await simulated_seeker.start_conversation(seeker_profile)
@@ -988,9 +1070,164 @@ async def main():
         # --- 面接プロセス多段階化 ---
         interview_stages = ["一次面接", "二次面接", "最終面接"]
         interview_results = []  # 各面接の結果を保存
+        scheduled_interviews = {}  # 各ステージのスケジュール情報を保存
+        
+        # 面接官情報を jobs.jsonから取得（複数ステージ対応）
+        stage_interviewers = {}
+        for job in jobs:
+            if job.get("interviewers"):
+                for interviewer in job["interviewers"]:
+                    stage = interviewer.get("stage", "一次面接")
+                    stage_interviewers[stage] = interviewer
+                break
+        
+        # フォールバック：各ステージの面接官が見つからない場合
+        if not stage_interviewers:
+            stage_interviewers = {
+                "一次面接": {
+                    "name": "田中部長", "role": "開発部長",
+                    "email": "tanaka@company.co.jp", "scheduling_method": "calendar",
+                    "interview_duration": 45,
+                    "availability": [
+                        {"start": "2025-01-20T14:00:00+09:00", "end": "2025-01-20T18:00:00+09:00"},
+                        {"start": "2025-01-22T10:00:00+09:00", "end": "2025-01-22T16:00:00+09:00"}
+                    ]
+                },
+                "二次面接": {
+                    "name": "佐藤リーダー", "role": "テックリード",
+                    "email": "sato@company.co.jp", "scheduling_method": "email",
+                    "interview_duration": 60, "availability": None, "preferred_times": "平日 10:00-18:00"
+                },
+                "最終面接": {
+                    "name": "山本CTO", "role": "技術責任者",
+                    "email": "yamamoto@company.co.jp", "scheduling_method": "calendar",
+                    "interview_duration": 60,
+                    "availability": [
+                        {"start": "2025-01-24T14:00:00+09:00", "end": "2025-01-24T18:00:00+09:00"}
+                    ]
+                }
+            }
         
         for i, stage in enumerate(interview_stages):
             print(f"\n【{stage}】")
+            
+            # --- 🆕 各ステージでの日程調整 ---
+            step = step_title(f"{stage}・日程調整")
+            current_interviewer_info = stage_interviewers.get(stage)
+            
+            if current_interviewer_info:
+                print(f"\n【{stage}・日程調整】")
+                print(f"面接官: {current_interviewer_info['name']} ({current_interviewer_info['role']})")
+                
+                # 面接官インスタンスを作成
+                stage_interviewer = SimulatedInterviewer(info=current_interviewer_info)
+                
+                # 日程調整実行
+                schedule_result = stage_interviewer.schedule_interview(
+                    seeker_data=seeker_profile,
+                    stage=stage,
+                    company_name=job_list[0].get("company", ""),
+                    position=job_list[0].get("title", "")
+                )
+                
+                if schedule_result:
+                    if isinstance(schedule_result, dict) and schedule_result.get("status") == "email_sent":
+                        # メール送信の場合
+                        print("📧 面接官へのメール送信が完了しました。返信待ちです。")
+                        
+                        # 🆕 メール返信をシミュレート（デモ用）
+                        print(f"\n【{stage}・面接官返信シミュレート】")
+                        simulated_reply = stage_interviewer.schedule_agent.email_agent.simulate_interviewer_reply(
+                            schedule_result["candidate_slots"], 
+                            "positive"
+                        )
+                        print("シミュレート返信:")
+                        print(simulated_reply)
+                        
+                        # 返信処理
+                        reply_result = stage_interviewer.schedule_agent.process_interview_reply(
+                            schedule_result["request_id"], 
+                            simulated_reply
+                        )
+                        
+                        if reply_result["status"] == "confirmed":
+                            scheduled_slot = reply_result["confirmed_slot"]
+                            interview_format = reply_result.get("interview_format", "オンライン")
+                            print(f"✅ {stage}の日程確定: {simulated_reply[:30]}...")
+                        else:
+                            print(f"❌ {stage}の返信処理失敗: {reply_result['message']}")
+                            scheduled_slot = None
+                    else:
+                        # カレンダー自動調整の場合
+                        scheduled_slot = schedule_result
+                        interview_format = "オンライン"  # デフォルト
+                    
+                    if scheduled_slot:
+                        # 求職者への通知
+                        seeker_response = simulated_seeker.notify_interview_scheduled(
+                            scheduled_slot, 
+                            current_interviewer_info.get("name", "面接官")
+                        )
+                        
+                        # スケジュール情報を保存
+                        scheduled_interviews[stage] = {
+                            "scheduled_slot": scheduled_slot,
+                            "interviewer_info": current_interviewer_info,
+                            "interview_format": interview_format,
+                            "seeker_response": seeker_response
+                        }
+                        
+                        # ログに記録
+                        schedule_log = {
+                            "stage": stage,
+                            "scheduled_start": scheduled_slot["start"],
+                            "scheduled_end": scheduled_slot["end"],
+                            "interviewer_name": current_interviewer_info.get("name", "面接官"),
+                            "interviewer_role": current_interviewer_info.get("role", "面接官"),
+                            "interview_format": interview_format,
+                            "seeker_response": seeker_response
+                        }
+                        log_json(step, schedule_log)
+                        log_md(step, f"{stage}日程調整完了\n- 日時: {scheduled_slot['start']} 〜 {scheduled_slot['end']}\n- 面接官: {current_interviewer_info.get('name', '面接官')}\n- 形式: {interview_format}\n- 求職者応答: {seeker_response}")
+                        log_html(step, f"{stage}日程調整完了\n日時: {scheduled_slot['start']} 〜 {scheduled_slot['end']}\n面接官: {current_interviewer_info.get('name', '面接官')}\n形式: {interview_format}")
+                    else:
+                        print(f"⚠️ {stage}の日程調整に失敗しました。")
+                        log_json(step, {"result": "日程調整失敗", "stage": stage})
+                        log_md(step, f"{stage}日程調整失敗")
+                        log_html(step, f"{stage}日程調整失敗")
+                        print("日程調整ができないため、シミュレーションを終了します。")
+                        update_realtime_html(is_completed=True)
+                        generate_html_file()
+                        return
+                else:
+                    print(f"⚠️ {stage}の日程調整に失敗しました。")
+                    log_json(step, {"result": "日程調整失敗", "stage": stage})
+                    log_md(step, f"{stage}日程調整失敗")
+                    log_html(step, f"{stage}日程調整失敗")
+                    print("日程調整ができないため、シミュレーションを終了します。")
+                    update_realtime_html(is_completed=True)
+                    generate_html_file()
+                    return
+            else:
+                print(f"⚠️ {stage}の面接官情報が見つかりません。")
+                log_json(step, {"result": "面接官情報なし", "stage": stage})
+                log_md(step, f"{stage}面接官情報なし")
+                log_html(step, f"{stage}面接官情報なし")
+            
+            # --- 面接実施 ---
+            # スケジュール情報を表示
+            if stage in scheduled_interviews:
+                schedule_info = scheduled_interviews[stage]
+                print(f"予定日時: {schedule_info['scheduled_slot']['start']} 〜 {schedule_info['scheduled_slot']['end']}")
+                print(f"面接官: {schedule_info['interviewer_info']['name']} ({schedule_info['interviewer_info']['role']})")
+                print(f"形式: {schedule_info['interview_format']}")
+                
+                # 面接官インスタンスを使用
+                interviewer = SimulatedInterviewer(info=schedule_info['interviewer_info'])
+            else:
+                # フォールバック
+                interviewer = SimulatedInterviewer(info=current_interviewer_info or {})
+            
             question = await interviewer.generate_question(job_list[0], stage=stage, seeker_profile=seeker_profile, resume=resume)
             print("【面接質問】")
             print(question)
@@ -1009,7 +1246,8 @@ async def main():
             interview_results.append({
                 "stage": stage,
                 "question": question,
-                "answer": answer
+                "answer": answer,
+                "schedule_info": scheduled_interviews.get(stage)
             })
             
             # --- 企業側振り返り会議（会話形式） ---
@@ -1131,9 +1369,48 @@ async def main():
             log_md(step, seeker_reflection_result)
             log_html(step, seeker_reflection_result)
             
-            # 求職者側判定結果を抽出
-            if any(keyword in seeker_reflection_result for keyword in ["辞退したい", "やめたい", "合わない", "継続しない"]):
+            # 求職者側判定結果をLLMで分析
+            seeker_decision_prompt = f"""
+以下の求職者側振り返り会議の内容を分析し、求職者が選考を「継続したい」か「辞退したい」かを判定してください。
+
+【振り返り会議の内容】
+{seeker_reflection_result}
+
+【判定基準】
+- 「継続したい」「条件付き継続」「進みたい」などの表現がある場合は「継続」
+- 「辞退したい」「やめたい」「合わない」「継続しない」などの表現がある場合は「辞退」
+- 迷いや不安があっても、最終的に前向きな意思が示されている場合は「継続」
+- 明確な判定表現がない場合、全体的な文脈から判断
+
+以下のフォーマットで回答してください：
+判定: 継続 または 辞退
+理由: [判定理由を1-2文で]
+
+必ず日本語で回答してください。
+"""
+            
+            seeker_decision_result = await seeker_agent.llm.generate_content_async(
+                seeker_decision_prompt,
+                agent_name=f"{stage}求職者判定分析",
+                progress_callback=update_progress
+            )
+            
+            print(f"\n【{stage}・求職者判定分析】")
+            print(seeker_decision_result)
+            
+            # LLMの判定結果から「継続」または「辞退」を抽出
+            if "判定: 継続" in seeker_decision_result or "判定：継続" in seeker_decision_result:
+                seeker_decision = "継続"
+            elif "判定: 辞退" in seeker_decision_result or "判定：辞退" in seeker_decision_result:
                 seeker_decision = "辞退"
+            else:
+                # LLMの回答から判定を推測（フォールバック）
+                if any(keyword in seeker_decision_result for keyword in ["継続", "進む", "前向き"]):
+                    seeker_decision = "継続"
+                else:
+                    seeker_decision = "辞退"
+            
+            if seeker_decision == "辞退":
                 print(f"\n【{stage}・求職者判定】辞退")
                 print(f"{stage}で求職者が辞退のため、選考を終了します。")
                 log_json(step_title(f"{stage} 求職者判定"), {"result": "辞退", "reason": "求職者側振り返り会議での判断"})

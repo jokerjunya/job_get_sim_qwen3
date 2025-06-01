@@ -6,7 +6,59 @@
     "salary": 550,
     "work_style": "リモート可",
     "tech_stack": ["Python", "Django", "AWS"],
-    "culture_keywords": ["成長環境", "自律性"]
+    "culture_keywords": ["成長環境", "自律性"],
+    "interviewers": [
+      {
+        "stage": "一次面接",
+        "name": "田中部長",
+        "role": "開発部長",
+        "email": "tanaka@techsolutions.co.jp",
+        "scheduling_method": "calendar",
+        "interview_duration": 45,
+        "availability": [
+          {
+            "start": "2025-01-20T10:00:00+09:00",
+            "end": "2025-01-20T12:00:00+09:00"
+          },
+          {
+            "start": "2025-01-21T14:00:00+09:00",
+            "end": "2025-01-21T16:00:00+09:00"
+          },
+          {
+            "start": "2025-01-22T15:00:00+09:00",
+            "end": "2025-01-22T17:00:00+09:00"
+          }
+        ]
+      },
+      {
+        "stage": "二次面接",
+        "name": "佐藤リーダー",
+        "role": "テックリード",
+        "email": "sato@techsolutions.co.jp",
+        "scheduling_method": "email",
+        "interview_duration": 60,
+        "availability": null,
+        "preferred_times": "平日 10:00-18:00"
+      },
+      {
+        "stage": "最終面接",
+        "name": "山本CTO",
+        "role": "技術責任者",
+        "email": "yamamoto@techsolutions.co.jp",
+        "scheduling_method": "calendar",
+        "interview_duration": 60,
+        "availability": [
+          {
+            "start": "2025-01-24T14:00:00+09:00",
+            "end": "2025-01-24T18:00:00+09:00"
+          },
+          {
+            "start": "2025-01-25T10:00:00+09:00",
+            "end": "2025-01-25T12:00:00+09:00"
+          }
+        ]
+      }
+    ]
   },
   {
     "id": "job2",
@@ -15,7 +67,47 @@
     "salary": 480,
     "work_style": "出社",
     "tech_stack": ["React", "TypeScript", "CSS"],
-    "culture_keywords": ["チームワーク", "安定"]
+    "culture_keywords": ["チームワーク", "安定"],
+    "interviewers": [
+      {
+        "stage": "一次面接",
+        "name": "佐藤リーダー",
+        "role": "テックリード",
+        "email": "sato@webinnovators.com",
+        "scheduling_method": "email",
+        "interview_duration": 60,
+        "availability": null,
+        "preferred_times": "平日 9:00-18:00"
+      },
+      {
+        "stage": "二次面接",
+        "name": "高橋マネージャー",
+        "role": "プロダクトマネージャー",
+        "email": "takahashi@webinnovators.com",
+        "scheduling_method": "calendar",
+        "interview_duration": 45,
+        "availability": [
+          {
+            "start": "2025-01-23T14:00:00+09:00",
+            "end": "2025-01-23T17:00:00+09:00"
+          },
+          {
+            "start": "2025-01-24T09:00:00+09:00",
+            "end": "2025-01-24T12:00:00+09:00"
+          }
+        ]
+      },
+      {
+        "stage": "最終面接",
+        "name": "井上代表",
+        "role": "代表取締役",
+        "email": "inoue@webinnovators.com",
+        "scheduling_method": "email",
+        "interview_duration": 30,
+        "availability": null,
+        "preferred_times": "平日 16:00-18:00（短時間での面談）"
+      }
+    ]
   },
   {
     "id": "job3",
@@ -24,7 +116,51 @@
     "salary": 620,
     "work_style": "ハイブリッド",
     "tech_stack": ["Python", "TensorFlow", "SQL"],
-    "culture_keywords": ["研究志向", "自由度"]
+    "culture_keywords": ["研究志向", "自由度"],
+    "interviewers": [
+      {
+        "stage": "一次面接",
+        "name": "鈴木博士",
+        "role": "リサーチディレクター",
+        "email": "suzuki@aianalytics.com",
+        "scheduling_method": "calendar",
+        "interview_duration": 60,
+        "availability": [
+          {
+            "start": "2025-01-20T14:00:00+09:00",
+            "end": "2025-01-20T18:00:00+09:00"
+          },
+          {
+            "start": "2025-01-22T10:00:00+09:00",
+            "end": "2025-01-22T16:00:00+09:00"
+          }
+        ]
+      },
+      {
+        "stage": "二次面接",
+        "name": "田村シニア",
+        "role": "シニアデータサイエンティスト",
+        "email": "tamura@aianalytics.com",
+        "scheduling_method": "calendar",
+        "interview_duration": 90,
+        "availability": [
+          {
+            "start": "2025-01-23T13:00:00+09:00",
+            "end": "2025-01-23T17:00:00+09:00"
+          }
+        ]
+      },
+      {
+        "stage": "最終面接",
+        "name": "中村CEO",
+        "role": "代表取締役CEO",
+        "email": "nakamura@aianalytics.com",
+        "scheduling_method": "email",
+        "interview_duration": 45,
+        "availability": null,
+        "preferred_times": "平日 17:00-19:00"
+      }
+    ]
   },
   {
     "id": "job4",
@@ -33,7 +169,43 @@
     "salary": 700,
     "work_style": "リモート可",
     "tech_stack": ["PMBOK", "JIRA", "Slack"],
-    "culture_keywords": ["リーダーシップ", "多様性"]
+    "culture_keywords": ["リーダーシップ", "多様性"],
+    "interviewers": [
+      {
+        "stage": "一次面接",
+        "name": "山本取締役",
+        "role": "事業部取締役",
+        "email": "yamamoto@globalitpartners.co.jp",
+        "scheduling_method": "email",
+        "interview_duration": 45,
+        "availability": null,
+        "preferred_times": "平日 11:00-17:00（会議の合間を縫って調整）"
+      },
+      {
+        "stage": "二次面接",
+        "name": "渡辺GM",
+        "role": "ゼネラルマネージャー",
+        "email": "watanabe@globalitpartners.co.jp",
+        "scheduling_method": "calendar",
+        "interview_duration": 60,
+        "availability": [
+          {
+            "start": "2025-01-25T14:00:00+09:00",
+            "end": "2025-01-25T18:00:00+09:00"
+          }
+        ]
+      },
+      {
+        "stage": "最終面接",
+        "name": "加藤社長",
+        "role": "代表取締役社長",
+        "email": "kato@globalitpartners.co.jp",
+        "scheduling_method": "email",
+        "interview_duration": 30,
+        "availability": null,
+        "preferred_times": "平日 18:00-19:00"
+      }
+    ]
   },
   {
     "id": "job5",
@@ -42,6 +214,50 @@
     "salary": 500,
     "work_style": "出社",
     "tech_stack": ["Selenium", "Python", "Jenkins"],
-    "culture_keywords": ["品質重視", "安定"]
+    "culture_keywords": ["品質重視", "安定"],
+    "interviewers": [
+      {
+        "stage": "一次面接",
+        "name": "高橋課長",
+        "role": "品質保証課長",
+        "email": "takahashi@qualityfirst.jp",
+        "scheduling_method": "calendar",
+        "interview_duration": 45,
+        "availability": [
+          {
+            "start": "2025-01-22T09:00:00+09:00",
+            "end": "2025-01-22T12:00:00+09:00"
+          },
+          {
+            "start": "2025-01-23T14:00:00+09:00",
+            "end": "2025-01-23T17:00:00+09:00"
+          }
+        ]
+      },
+      {
+        "stage": "二次面接",
+        "name": "松本次長",
+        "role": "品質保証次長",
+        "email": "matsumoto@qualityfirst.jp",
+        "scheduling_method": "email",
+        "interview_duration": 60,
+        "availability": null,
+        "preferred_times": "平日 13:00-17:00"
+      },
+      {
+        "stage": "最終面接",
+        "name": "島田部長",
+        "role": "開発部長",
+        "email": "shimada@qualityfirst.jp",
+        "scheduling_method": "calendar",
+        "interview_duration": 45,
+        "availability": [
+          {
+            "start": "2025-01-27T10:00:00+09:00",
+            "end": "2025-01-27T15:00:00+09:00"
+          }
+        ]
+      }
+    ]
   }
 ] 

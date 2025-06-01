@@ -258,39 +258,55 @@ class SimulatedSeeker(BaseAgent):
     async def application_reason(self, seeker_profile: dict, job: dict) -> str:
         with open("prompts/seeker_application_reason.txt", encoding="utf-8") as f:
             prompt_template = f.read().strip()
-        # 必要な値を抽出
-        seeker_name = seeker_profile.get("name", "")
-        current_job = seeker_profile.get("current_job", {})
-        current_company = current_job.get("company", "")
-        current_role = current_job.get("role", "")
-        current_period = current_job.get("period", "")
-        skills = seeker_profile.get("skills", [])
-        skill1 = skills[0] if len(skills) > 0 else ""
-        skill2 = skills[1] if len(skills) > 1 else ""
-        values = ", ".join(seeker_profile.get("values", []))
-        pr = f"{seeker_name}は{current_company}で{current_role}として活躍し、{skill1}などのスキルを活かしてきました。{values}を大切にし、現場の課題解決やチームでの協働に強みがあります。新しい環境でも自律的に挑戦し、社会に貢献したいと考えています。"
-        job_position = job.get("position", "")
-        job_company = job.get("company", "")
-        job_mission = job.get("mission", "")
-        job_culture = ", ".join(job.get("culture_keywords", []))
-        job_persona = job.get("persona", "")
-        # 推しポイント（例：成長意欲や協調性など）
-        push_point = "成長意欲と協調性、困難な状況でもやり抜く粘り強さ"
+        
+        # seekerプロフィールの情報を文字列化
+        seeker_info = f"求職者プロフィール: {json.dumps(seeker_profile, ensure_ascii=False, indent=2)}"
+        job_info = f"求人情報: {json.dumps(job, ensure_ascii=False, indent=2)}"
+        
         prompt = prompt_template.format(
-            seeker_name=seeker_name,
-            current_company=current_company,
-            current_role=current_role,
-            current_period=current_period,
-            skill1=skill1,
-            skill2=skill2,
-            values=values,
-            pr=pr,
-            job_position=job_position,
-            job_company=job_company,
-            job_mission=job_mission,
-            job_culture=job_culture,
-            job_persona=job_persona,
-            push_point=push_point
+            seeker_profile=seeker_info,
+            job=job_info
         )
-        reason = await self.llm.generate_content_async(prompt, agent_name="SimulatedSeeker（求職者）")
-        return reason.strip() 
+        return await self.llm.generate_content_async(prompt, agent_name="SimulatedSeeker（求職者）")
+    
+    def notify_interview_scheduled(self, scheduled_slot: dict, interviewer_name: str = None) -> str:
+        """
+        面接日程が決定したことを求職者に通知する
+        
+        Args:
+            scheduled_slot: 確定した面接スロット {"start": "...", "end": "..."}
+            interviewer_name: 面接官名
+            
+        Returns:
+            求職者からの応答メッセージ
+        """
+        from .schedule_agent import ScheduleAgent
+        
+        schedule_agent = ScheduleAgent()
+        start_dt = schedule_agent.parse_iso_datetime(scheduled_slot["start"])
+        end_dt = schedule_agent.parse_iso_datetime(scheduled_slot["end"])
+        
+        # 日本時間での表示
+        start_jst = start_dt.astimezone(schedule_agent.timezone)
+        end_jst = end_dt.astimezone(schedule_agent.timezone)
+        
+        date_str = start_jst.strftime("%Y年%m月%d日")
+        start_time = start_jst.strftime("%H:%M")
+        end_time = end_jst.strftime("%H:%M")
+        
+        # 求職者からの返答メッセージを生成
+        response_patterns = [
+            f"ありがとうございます！{date_str} {start_time}〜{end_time}で承知しました。",
+            f"了解いたします。{date_str} {start_time}から面接をよろしくお願いします。",
+            f"{date_str} {start_time}〜の面接、了承いたします。当日はよろしくお願いいたします。",
+            f"面接日程をご調整いただき、ありがとうございます。{date_str} {start_time}〜でお待ちしております。"
+        ]
+        
+        response = random.choice(response_patterns)
+        if interviewer_name:
+            response += f"\n{interviewer_name}様にお会いできるのを楽しみにしております。"
+        
+        print(f"📧 求職者からの返信:\n{response}")
+        print("=" * 50)
+        
+        return response 
