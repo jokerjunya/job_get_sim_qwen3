@@ -1074,7 +1074,7 @@ async def main():
         
         # 面接官情報を jobs.jsonから取得（複数ステージ対応）
         stage_interviewers = {}
-        for job in jobs:
+        for job in data_manager.static_jobs:
             if job.get("interviewers"):
                 for interviewer in job["interviewers"]:
                     stage = interviewer.get("stage", "一次面接")
