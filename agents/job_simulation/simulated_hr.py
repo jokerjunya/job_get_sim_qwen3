@@ -7,7 +7,7 @@ class SimulatedHR(BaseAgent):
     """
     def __init__(self, name: str = "SimulatedHR", description: str = "企業の人事担当者をシミュレートするエージェント"):
         super().__init__(name, description)
-        # 例: どんな人材が欲しいか、どんな背景で採用したいか等の初期要望
+        # デフォルトの基本要望（フォールバック用）
         self.basic_needs = {
             "position": "AI/MLエンジニア",
             "background": "急成長中のAIプロダクト開発で機械学習基盤を構築・運用",
@@ -16,12 +16,35 @@ class SimulatedHR(BaseAgent):
             "min_salary": 700,
             "culture_keywords": ["挑戦", "自律", "チームワーク"]
         }
+        # 動的な要望（求人パターンベース）
+        self.dynamic_needs = None
+
+    def set_needs_from_job_pattern(self, job_pattern: dict):
+        """求人パターンに基づいてHR要望を動的に設定"""
+        if not job_pattern:
+            return
+            
+        # 年収レンジから最低年収を抽出
+        salary_range = job_pattern.get('conditions', {}).get('salary_range', '500-700万円')
+        import re
+        numbers = re.findall(r'\d+', salary_range)
+        min_salary = int(numbers[0]) if numbers else 500
+        
+        self.dynamic_needs = {
+            "position": job_pattern.get('position', 'エンジニア'),
+            "background": f"{job_pattern.get('industry', '成長')}業界で{job_pattern.get('mission', '事業を推進')}",
+            "skills": job_pattern.get('requirements', {}).get('skills', ['プログラミング']),
+            "work_style": job_pattern.get('conditions', {}).get('work_style', 'ハイブリッド'),
+            "min_salary": min_salary,
+            "culture_keywords": job_pattern.get('culture', ['成長', 'チームワーク'])
+        }
 
     def provide_needs(self) -> dict:
         """
         EmployerAgentからの質問に対して、求人の要望・意図を返す。
+        動的要望が設定されている場合はそれを、そうでなければデフォルトを返す。
         """
-        return self.basic_needs 
+        return self.dynamic_needs if self.dynamic_needs else self.basic_needs
 
     def provide_additional_requirements(self) -> dict:
         """追加の要件や詳細情報を提示"""

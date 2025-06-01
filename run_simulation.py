@@ -41,6 +41,11 @@ async def main():
     # ランダムに求職者と求人を選択
     seeker_profile, generated_job = data_manager.get_simulation_pair()
     
+    # 🆕 選択に使用された求人パターンを取得
+    # get_simulation_pairの内部でselect_suitable_job_patternを使用しているので、
+    # 同じロジックで求人パターンを再取得
+    selected_job_pattern = data_manager.select_suitable_job_pattern(seeker_profile)
+    
     print("🎲 今回のシミュレーション組み合わせ:")
     print(f"  求職者: {seeker_profile['name']} ({seeker_profile.get('age', '?')}歳)")
     print(f"  現職: {seeker_profile.get('current_job', {}).get('company', '?')} - {seeker_profile.get('current_job', {}).get('role', '?')}")
@@ -888,7 +893,12 @@ async def main():
     simulated_hr.llm = seeker_agent.llm
     employer_agent = EmployerAgent()
 
-    # 既存のHR要望生成は残す（互換性のため）
+    # 🆕 選択された求人パターンに基づいてHR要望を動的に設定
+    # HR要望を求人パターンに基づいて動的に設定
+    if selected_job_pattern:
+        simulated_hr.set_needs_from_job_pattern(selected_job_pattern)
+
+    # HR要望生成（今度は動的に生成される）
     hr_needs = simulated_hr.provide_needs()
     log_json("0.1. SimulatedHRの求人要望", hr_needs)
     log_md("0.1. SimulatedHRの求人要望", hr_needs)

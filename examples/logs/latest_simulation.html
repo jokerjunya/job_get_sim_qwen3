@@ -31,6 +31,13 @@
       font-size: 1.2em;
       opacity: 0.9;
     }
+    .simulation-info {
+      background: rgba(255,255,255,0.1);
+      border-radius: 15px;
+      padding: 1.5em;
+      margin: 1em 0;
+      backdrop-filter: blur(10px);
+    }
     .progress-container {
       background: rgba(255,255,255,0.1);
       border-radius: 15px;
@@ -131,22 +138,27 @@
       <div class="subtitle">リアルタイムシミュレーション</div>
     </div>
     
+    <div class="simulation-info">
+      <h3>🎲 今回のシミュレーション</h3>
+      <p><strong>求職者:</strong> 鈴木麻衣 (28歳)</p>
+      <p><strong>現職:</strong> 商社 - 営業</p>
+      <p><strong>特徴:</strong> 営業経験, キャリアチェンジ, IT興味, コミュニケーション力, 学習意欲</p>
+      <p><strong>求人:</strong> マーケティングエンジニア at コマースInc.</p>
+      <p><strong>業界:</strong> eコマース / EC企業</p>
+    </div>
+    
     <div class="progress-container">
       <div class="current-step">
-        🎉 シミュレーション完了！
+        🤖 SeekerAgent（求職者AI）が回答を生成中
       </div>
       <div class="progress-bar">
-        <div class="progress-fill" style="width: 100%"></div>
+        <div class="progress-fill" style="width: 25.0%"></div>
       </div>
       <div style="text-align: center; margin: 1em 0;">
-        進捗: 46/46 ステップ (100.0%)
+        進捗: 5/20 ステップ (25.0%)
       </div>
       
       
-            <div class="completion-message">
-              🎉 転職シミュレーションが完了しました！<br>
-              詳細なログは静的版HTMLファイルをご確認ください。
-            </div>
       
       <div class="steps-list">
         <h3>実行ステップ</h3>
@@ -161,179 +173,19 @@
             </div>
             <div class="step-item">
               <div class="step-status step-completed">✓</div>
-              <div class="step-text">0.2. EmployerAgentが生成した求人票</div>
+              <div class="step-text">0.2. EmployerAgentが生成した従来求人票（参考）</div>
+            </div>
+            <div class="step-item">
+              <div class="step-status step-completed">✓</div>
+              <div class="step-text">0.3. 今回使用する求人票</div>
             </div>
             <div class="step-item">
               <div class="step-status step-completed">✓</div>
               <div class="step-text">1. 転職相談の会話</div>
             </div>
             <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">1. 求人概要提示</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">2. 求人推しプレゼン</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">3. 応募意思確認</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">4. 応募理由・AI推薦付き履歴書</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">5. 履歴書提出</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">6. empaiによる書類審査</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">7. simhrの意見</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">8. 書類選考・最終判定</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">9. 一次面接・日程調整</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">12. 一次面接 質問</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">15. 一次面接 回答</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">16. 一次面接後・企業側振り返り会議</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">19. 一次面接 企業判定</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">20. 一次面接後・求職者側振り返り会議</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">23. 一次面接 求職者判定</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">26. 一次面接 最終判定</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">27. 二次面接・日程調整</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">30. 二次面接 質問</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">33. 二次面接 回答</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">34. 二次面接後・企業側振り返り会議</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">37. 二次面接 企業判定</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">38. 二次面接後・求職者側振り返り会議</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">41. 二次面接 求職者判定</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">44. 二次面接 最終判定</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">45. 最終面接・日程調整</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">48. 最終面接 質問</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">51. 最終面接 回答</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">52. 最終面接後・企業側振り返り会議</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">55. 最終面接 企業判定</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">56. 最終面接後・求職者側振り返り会議</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">59. 最終面接 求職者判定</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">62. 最終面接 最終判定</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">65. 初回オファー提示</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">68. 交渉ラウンド1 求職者リクエスト</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">71. 交渉ラウンド1 企業再提示</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">74. 交渉ラウンド2 求職者リクエスト</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">77. 交渉ラウンド2 企業再提示</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">80. 交渉ラウンド3 求職者リクエスト</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">83. 交渉ラウンド3 企業再提示</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">86. 交渉ラウンド3 打ち切り</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">87. オファー受諾判断プロセス</div>
-            </div>
-            <div class="step-item">
-              <div class="step-status step-completed">✓</div>
-              <div class="step-text">90. 最終決断</div>
+              <div class="step-status step-current">●</div>
+              <div class="step-text">🤖 SeekerAgent（求職者AI）が回答を生成中 <div class="loading-spinner"></div></div>
             </div>
       </div>
       
