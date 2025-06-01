@@ -46,13 +46,40 @@ async def main():
     # 同じロジックで求人パターンを再取得
     selected_job_pattern = data_manager.select_suitable_job_pattern(seeker_profile)
     
-    print("🎲 今回のシミュレーション組み合わせ:")
-    print(f"  求職者: {seeker_profile['name']} ({seeker_profile.get('age', '?')}歳)")
-    print(f"  現職: {seeker_profile.get('current_job', {}).get('company', '?')} - {seeker_profile.get('current_job', {}).get('role', '?')}")
-    print(f"  タグ: {', '.join(seeker_profile.get('tags', []))}")
-    print(f"  求人: {generated_job['title']} at {generated_job['company']}")
-    print(f"  業界: {generated_job.get('industry', '?')} / 企業タイプ: {generated_job.get('company_type', '?')}")
-    print("")
+    # 📝 シミュレーション概要表示関数
+    def display_simulation_overview():
+        print("=" * 80)
+        print("🎯 転職シミュレーション開始")
+        print("=" * 80)
+        
+        # 1. 対象求職者の詳細概要
+        print("\n👤 【対象求職者プロフィール】")
+        print(f"  氏名: {seeker_profile['name']} ({seeker_profile.get('age', '?')}歳)")
+        print(f"  現職: {seeker_profile.get('current_job', {}).get('company', '?')} - {seeker_profile.get('current_job', {}).get('role', '?')}")
+        
+        # 経験年数情報があれば表示
+        if seeker_profile.get('experience'):
+            print(f"  経験: {seeker_profile.get('experience')}")
+        
+        # スキル情報
+        if seeker_profile.get('skills'):
+            print(f"  スキル: {', '.join(seeker_profile['skills'])}")
+        
+        # 特徴・志向性
+        print(f"  特徴: {', '.join(seeker_profile.get('tags', []))}")
+        
+        # 価値観
+        if seeker_profile.get('values'):
+            print(f"  価値観: {', '.join(seeker_profile['values'])}")
+        
+        # 希望条件
+        if seeker_profile.get('desired_conditions'):
+            print(f"  希望: {seeker_profile['desired_conditions']}")
+        
+        print("\n🏢 【企業HR要望（求める人材像）】")
+        
+    # 概要表示
+    display_simulation_overview()
     
     # リアルタイムHTML生成のための初期化
     def init_realtime_html():
@@ -900,6 +927,26 @@ async def main():
 
     # HR要望生成（今度は動的に生成される）
     hr_needs = simulated_hr.provide_needs()
+    
+    # HR要望を表示
+    print(f"  ポジション: {hr_needs.get('position', '?')}")
+    print(f"  背景・目的: {hr_needs.get('background', '?')}")
+    print(f"  必要スキル: {', '.join(hr_needs.get('skills', []))}")
+    print(f"  働き方: {hr_needs.get('work_style', '?')}")
+    print(f"  最低年収: {hr_needs.get('min_salary', '?')}万円〜")
+    print(f"  重視する文化: {', '.join(hr_needs.get('culture_keywords', []))}")
+    
+    # 3. マッチング結果表示
+    print("\n🎲 【今回のマッチング結果】")
+    print(f"  選択求人: {generated_job['title']} at {generated_job['company']}")
+    print(f"  業界: {generated_job.get('industry', '?')} / 企業タイプ: {generated_job.get('company_type', '?')}")
+    print(f"  提示年収: {generated_job.get('salary', '?')}万円")
+    print(f"  働き方: {generated_job.get('work_style', '?')}")
+    
+    print("\n" + "=" * 80)
+    print("シミュレーション実行中...")
+    print("=" * 80)
+    
     log_json("0.1. SimulatedHRの求人要望", hr_needs)
     log_md("0.1. SimulatedHRの求人要望", hr_needs)
     log_html("0.1. SimulatedHRの求人要望", hr_needs)
@@ -929,16 +976,12 @@ async def main():
     formatted_traditional_job_posting = format_job_posting_md(traditional_job_posting)
     log_md("0.2. EmployerAgentが生成した従来求人票（参考）", formatted_traditional_job_posting)
     log_html("0.2. EmployerAgentが生成した従来求人票（参考）", formatted_traditional_job_posting)
-    print("\n【従来の求人生成（参考）】")
-    print(traditional_job_posting)
 
     # DataManagerで選択した求人票を実際のシミュレーションで使用
     log_json("0.3. 今回使用する求人票", generated_job)
     formatted_generated_job = format_job_posting_md(generated_job)
     log_md("0.3. 今回使用する求人票", formatted_generated_job)
     log_html("0.3. 今回使用する求人票", formatted_generated_job)
-    print("\n【今回のシミュレーションで使用する求人票】")
-    print(generated_job)
 
     # job_listを選択された求人とする
     job_list = [generated_job]
