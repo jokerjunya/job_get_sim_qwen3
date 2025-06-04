@@ -1,6 +1,8 @@
 import json
 import random
 from typing import Dict, List, Tuple, Optional
+from datetime import datetime, timedelta
+import pytz
 
 class DataManager:
     """求職者と求人データの管理・選択を行うクラス"""
@@ -125,6 +127,10 @@ class DataManager:
         salary_range = pattern.get('conditions', {}).get('salary_range', '400-600万円')
         salary = self._extract_salary_from_range(salary_range)
         
+        # 面接官情報を取得し、現在時刻ベースでavailabilityを更新
+        interviewers = self._get_default_interviewers()
+        updated_interviewers = self._update_interviewer_availability(interviewers)
+        
         job_posting = {
             "id": f"generated_{pattern['id']}_{random.randint(1000, 9999)}",
             "title": pattern['position'],
@@ -140,8 +146,8 @@ class DataManager:
             "company_type": pattern.get('company_type', ''),
             "industry": pattern.get('industry', ''),
             "size": pattern.get('size', ''),
-            # 面接官情報（既存のjobs.jsonから借用）
-            "interviewers": self._get_default_interviewers()
+            # 🆕 更新済み面接官情報
+            "interviewers": updated_interviewers
         }
         
         return job_posting
@@ -189,25 +195,95 @@ class DataManager:
                 if job.get('interviewers'):
                     return job['interviewers']
         
-        # フォールバック
+        # フォールバック：ダミー面接官（availability付き）
+        jst = pytz.timezone('Asia/Tokyo')
+        base_date = datetime.now(jst) + timedelta(days=7)
+        
+        # フォールバック面接官の空き時間を生成
+        availability = [
+            {
+                "start": base_date.replace(hour=15, minute=0, second=0, microsecond=0).isoformat(),
+                "end": (base_date + timedelta(hours=3)).replace(hour=18, minute=0, second=0, microsecond=0).isoformat()
+            },
+            {
+                "start": (base_date + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0).isoformat(),
+                "end": (base_date + timedelta(days=1)).replace(hour=16, minute=0, second=0, microsecond=0).isoformat()
+            }
+        ]
+        
         return [
             {
                 "stage": "一次面接",
                 "name": "田中マネージャー",
                 "role": "採用マネージャー",
-                "interview_duration": 45
+                "email": "tanaka@example.com",
+                "scheduling_method": "calendar",
+                "interview_duration": 45,
+                "availability": availability
             },
             {
                 "stage": "最終面接", 
                 "name": "山田部長",
                 "role": "部長",
-                "interview_duration": 60
+                "email": "yamada@example.com",
+                "scheduling_method": "calendar",
+                "interview_duration": 60,
+                "availability": availability
             }
         ]
+    
+    def _update_interviewer_availability(self, interviewers: List[Dict]) -> List[Dict]:
+        """面接官のavailabilityを現在時刻ベースに更新"""
+        from datetime import datetime, timedelta
+        import pytz
+        
+        jst = pytz.timezone('Asia/Tokyo')
+        base_date = datetime.now(jst) + timedelta(days=7)
+        
+        # 面接官向けの空き時間パターンを生成
+        availability_patterns = [
+            # パターン1: 平日午前
+            [
+                {
+                    "start": base_date.replace(hour=10, minute=0, second=0, microsecond=0).isoformat(),
+                    "end": (base_date + timedelta(hours=2)).replace(hour=12, minute=0, second=0, microsecond=0).isoformat()
+                },
+                {
+                    "start": (base_date + timedelta(days=1)).replace(hour=15, minute=0, second=0, microsecond=0).isoformat(),
+                    "end": (base_date + timedelta(days=1)).replace(hour=18, minute=0, second=0, microsecond=0).isoformat()
+                }
+            ],
+            # パターン2: 平日午後メイン
+            [
+                {
+                    "start": base_date.replace(hour=14, minute=0, second=0, microsecond=0).isoformat(),
+                    "end": (base_date + timedelta(hours=4)).replace(hour=18, minute=0, second=0, microsecond=0).isoformat()
+                },
+                {
+                    "start": (base_date + timedelta(days=2)).replace(hour=16, minute=0, second=0, microsecond=0).isoformat(),
+                    "end": (base_date + timedelta(days=2)).replace(hour=19, minute=0, second=0, microsecond=0).isoformat()
+                }
+            ]
+        ]
+        
+        updated_interviewers = []
+        for i, interviewer in enumerate(interviewers):
+            updated_interviewer = interviewer.copy()
+            # availability がある場合のみ更新
+            if 'availability' in updated_interviewer:
+                pattern_index = i % len(availability_patterns)
+                updated_interviewer['availability'] = availability_patterns[pattern_index]
+            updated_interviewers.append(updated_interviewer)
+        
+        return updated_interviewers
     
     def get_simulation_pair(self) -> Tuple[Dict, Dict]:
         """シミュレーション用の求職者と求人のペアを取得"""
         seeker = self.select_random_seeker()
+        
+        # 🆕 求職者にavailability（空き時間情報）を追加
+        seeker = self._add_availability_to_seeker(seeker.copy())
+        
         job_pattern = self.select_suitable_job_pattern(seeker)
         
         if job_pattern:
@@ -220,6 +296,43 @@ class DataManager:
                 raise ValueError("求人データが見つかりません")
         
         return seeker, job_posting
+    
+    def _add_availability_to_seeker(self, seeker: Dict) -> Dict:
+        """求職者にダミーの空き時間情報を追加"""
+        # 日本時間のタイムゾーンを設定
+        jst = pytz.timezone('Asia/Tokyo')
+        
+        # 現在日時から1週間後の範囲で空き時間を生成（timezone-aware）
+        base_date = datetime.now(jst) + timedelta(days=7)
+        
+        # 平日の空き時間パターンを複数生成（現実的な空き時間を想定）
+        availability = []
+        
+        # パターン1: 平日午後（在職中のため午後に時間を作る）
+        day1 = base_date.replace(hour=14, minute=0, second=0, microsecond=0)
+        availability.append({
+            "start": day1.isoformat(),
+            "end": (day1 + timedelta(hours=4)).isoformat()
+        })
+        
+        # パターン2: 平日夕方（在職中のため夕方に時間を作る）
+        day2 = (base_date + timedelta(days=2)).replace(hour=18, minute=0, second=0, microsecond=0)
+        availability.append({
+            "start": day2.isoformat(),
+            "end": (day2 + timedelta(hours=2)).isoformat()
+        })
+        
+        # パターン3: 土曜日の午前（休日を利用）
+        saturday = base_date + timedelta(days=(5 - base_date.weekday()) % 7)
+        saturday_slot = saturday.replace(hour=10, minute=0, second=0, microsecond=0)
+        availability.append({
+            "start": saturday_slot.isoformat(),
+            "end": (saturday_slot + timedelta(hours=6)).isoformat()
+        })
+        
+        seeker["availability"] = availability
+        
+        return seeker
     
     def get_stats(self) -> Dict:
         """データ統計情報を取得"""
