@@ -3,6 +3,14 @@ import json
 import re
 
 class Qwen3Llm:
+    """
+    Qwen3 LLMラッパークラス
+    
+    🔧 Thinking機能: OFFに設定済み
+    - Qwen3のthinking機能は"think": Falseパラメータで無効化
+    - 生成速度の向上とレスポンスの簡潔化を実現
+    - <think>タグが含まれる場合は正規表現で除去
+    """
     def __init__(self, model="ollama/qwen3:30b-a3b", api_url="http://localhost:11434/api/generate"):
         self.model = model
         self.api_url = api_url
@@ -30,6 +38,7 @@ class Qwen3Llm:
                     "model": self.model.split("/")[-1],
                     "prompt": enhanced_prompt,
                     "stream": True,
+                    "think": False,
                     **kwargs
                 },
                 stream=True
