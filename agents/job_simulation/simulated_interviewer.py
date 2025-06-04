@@ -54,7 +54,7 @@ class SimulatedInterviewer(BaseAgent):
     
     def schedule_interview(self, seeker_data: dict, stage: str = "一次面接", company_name: str = "", position: str = "") -> dict:
         """
-        面接の日程調整を行う（新しいschedule_interviewメソッドを使用）
+        面接の日程調整を行う（改善された転職エージェント方式対応）
         
         Args:
             seeker_data: 求職者データ（availabilityフィールドを含む）
@@ -76,10 +76,24 @@ class SimulatedInterviewer(BaseAgent):
             position=position
         )
         
-        # 結果に応じた出力
+        # 🆕 新しいレスポンス形式に対応した結果処理
         if result["status"] == "auto_scheduled":
             print(f"✅ 自動調整成功: {result['message']}")
-            return result["scheduled_slot"]
+            
+            # 🎯 転職エージェントらしい詳細情報の表示
+            scheduled_slot = result["scheduled_slot"]
+            if "proposed_alternatives" in result and result["proposed_alternatives"]:
+                print(f"✅ 面接日程調整成功: {scheduled_slot}")
+                alt_count = len(result["proposed_alternatives"])
+                print(f"📊 検討された候補日程: {alt_count}パターン")
+                
+                # 調整履歴があれば表示
+                if "adjustment_history" in result:
+                    print("📋 調整プロセス:")
+                    for step in result["adjustment_history"]:
+                        print(f"  ✓ {step}")
+            
+            return scheduled_slot
         
         elif result["status"] == "email_sent":
             print(f"📧 メール送信完了: {result['message']}")
@@ -93,6 +107,13 @@ class SimulatedInterviewer(BaseAgent):
         
         elif result["status"] == "failed":
             print(f"❌ 日程調整失敗: {result['message']}")
+            
+            # 🆕 転職エージェントらしい代替案の提示
+            if "alternative_approaches" in result:
+                print("💡 転職エージェントからの提案:")
+                for approach in result["alternative_approaches"]:
+                    print(f"  • {approach}")
+            
             print("=" * 50)
             return None
         

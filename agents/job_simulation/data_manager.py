@@ -202,12 +202,22 @@ class DataManager:
         # フォールバック面接官の空き時間を生成
         availability = [
             {
-                "start": base_date.replace(hour=15, minute=0, second=0, microsecond=0).isoformat(),
-                "end": (base_date + timedelta(hours=3)).replace(hour=18, minute=0, second=0, microsecond=0).isoformat()
+                "stage": "一次面接",
+                "name": "田中マネージャー",
+                "role": "採用マネージャー",
+                "email": "tanaka@example.com",
+                "scheduling_method": "calendar",
+                "interview_duration": 45,
+                "availability": availability
             },
             {
-                "start": (base_date + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0).isoformat(),
-                "end": (base_date + timedelta(days=1)).replace(hour=16, minute=0, second=0, microsecond=0).isoformat()
+                "stage": "最終面接", 
+                "name": "山田部長",
+                "role": "部長",
+                "email": "yamada@example.com",
+                "scheduling_method": "calendar",
+                "interview_duration": 60,
+                "availability": availability
             }
         ]
         
@@ -233,46 +243,54 @@ class DataManager:
         ]
     
     def _update_interviewer_availability(self, interviewers: List[Dict]) -> List[Dict]:
-        """面接官のavailabilityを現在時刻ベースに更新"""
+        """面接官のavailabilityを現在時刻ベースに更新（求職者と重複しやすく調整）"""
         from datetime import datetime, timedelta
         import pytz
         
         jst = pytz.timezone('Asia/Tokyo')
         base_date = datetime.now(jst) + timedelta(days=7)
         
-        # 面接官向けの空き時間パターンを生成
-        availability_patterns = [
-            # パターン1: 平日午前
-            [
-                {
-                    "start": base_date.replace(hour=10, minute=0, second=0, microsecond=0).isoformat(),
-                    "end": (base_date + timedelta(hours=2)).replace(hour=12, minute=0, second=0, microsecond=0).isoformat()
-                },
-                {
-                    "start": (base_date + timedelta(days=1)).replace(hour=15, minute=0, second=0, microsecond=0).isoformat(),
-                    "end": (base_date + timedelta(days=1)).replace(hour=18, minute=0, second=0, microsecond=0).isoformat()
-                }
-            ],
-            # パターン2: 平日午後メイン
-            [
-                {
-                    "start": base_date.replace(hour=14, minute=0, second=0, microsecond=0).isoformat(),
-                    "end": (base_date + timedelta(hours=4)).replace(hour=18, minute=0, second=0, microsecond=0).isoformat()
-                },
-                {
-                    "start": (base_date + timedelta(days=2)).replace(hour=16, minute=0, second=0, microsecond=0).isoformat(),
-                    "end": (base_date + timedelta(days=2)).replace(hour=19, minute=0, second=0, microsecond=0).isoformat()
-                }
-            ]
-        ]
-        
         updated_interviewers = []
-        for i, interviewer in enumerate(interviewers):
+        for interviewer in interviewers:
             updated_interviewer = interviewer.copy()
-            # availability がある場合のみ更新
-            if 'availability' in updated_interviewer:
-                pattern_index = i % len(availability_patterns)
-                updated_interviewer['availability'] = availability_patterns[pattern_index]
+            
+            # 🎯 転職エージェントの現実: 面接官は複数の時間帯で柔軟に対応
+            availability = []
+            
+            # パターン1: 求職者の平日午後に合わせた企業側の調整
+            day1 = base_date.replace(hour=13, minute=0, second=0, microsecond=0)  # 13:00開始で重複確保
+            availability.append({
+                "start": day1.isoformat(),
+                "end": (day1 + timedelta(hours=5)).isoformat(),  # 13:00-18:00（求職者14:00-18:00と重複）
+                "preference": "high"
+            })
+            
+            # パターン2: 求職者の平日夕方と重複する企業の延長対応
+            day2 = (base_date + timedelta(days=2)).replace(hour=17, minute=0, second=0, microsecond=0)
+            availability.append({
+                "start": day2.isoformat(),
+                "end": (day2 + timedelta(hours=3)).isoformat(),  # 17:00-20:00（求職者18:00-20:00と重複）
+                "preference": "medium"
+            })
+            
+            # パターン3: 土曜日の対応（転職面接では企業も土曜日に対応することが多い）
+            saturday = base_date + timedelta(days=(5-base_date.weekday()) % 7)  # 次の土曜日
+            saturday_slot = saturday.replace(hour=10, minute=0, second=0, microsecond=0)
+            availability.append({
+                "start": saturday_slot.isoformat(),
+                "end": (saturday_slot + timedelta(hours=6)).isoformat(),  # 10:00-16:00（求職者と重複）
+                "preference": "medium"
+            })
+            
+            # パターン4: 平日朝の早朝対応（9:00開始で朝型の面接）
+            early_day = (base_date + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
+            availability.append({
+                "start": early_day.isoformat(),
+                "end": (early_day + timedelta(hours=3)).isoformat(),  # 9:00-12:00
+                "preference": "low"
+            })
+            
+            updated_interviewer['availability'] = availability
             updated_interviewers.append(updated_interviewer)
         
         return updated_interviewers
